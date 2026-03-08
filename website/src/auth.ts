@@ -1,0 +1,205 @@
+import {
+  CognitoIdentityProviderClient,
+  InitiateAuthCommand,
+  SignUpCommand,
+  ConfirmSignUpCommand,
+  GetUserCommand,
+  GlobalSignOutCommand,
+} from "@aws-sdk/client-cognito-identity-provider";
+
+// Cognito configuration — will be set up via AWS console
+const REGION = "us-east-1";
+const CLIENT_ID = import.meta.env.VITE_COGNITO_CLIENT_ID || "";
+
+const client = new CognitoIdentityProviderClient({ region: REGION });
+
+export interface AuthUser {
+  email: string;
+  sub: string;
+  accessToken: string;
+  idToken: string;
+  refreshToken: string;
+}
+
+const STORAGE_KEY = "minimax_auth";
+
+function saveTokens(user: AuthUser): void {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(user));
+}
+
+export function getStoredUser(): AuthUser | null {
+  const stored = localStorage.getItem(STORAGE_KEY);
+  if (!stored) return null;
+  try {
+    return JSON.parse(stored) as AuthUser;
+  } catch {
+    return null;
+  }
+}
+
+export function clearAuth(): void {
+  localStorage.removeItem(STORAGE_KEY);
+}
+
+export function getAccessToken(): string | null {
+  return getStoredUser()?.accessToken ?? null;
+}
+
+export function getIdToken(): string | null {
+  return getStoredUser()?.idToken ?? null;
+}
+
+export async function signUp(email: string, password: string): Promise<void> {
+  await client.send(
+    new SignUpCommand({
+      ClientId: CLIENT_ID,
+      Username: email,
+      Password: password,
+      UserAttributes: [{ Name: "email", Value: email }],
+    })
+  );
+}
+
+export async function confirmSignUp(email: string, code: string): Promise<void> {
+  await client.send(
+    new ConfirmSignUpCommand({
+      ClientId: CLIENT_ID,
+      Username: email,
+      ConfirmationCode: code,
+    })
+  );
+}
+
+export async function signIn(email: string, password: string): Promise<AuthUser> {
+  const resp = await client.send(
+    new InitiateAuthCommand({
+      ClientId: CLIENT_ID,
+      AuthFlow: "USER_PASSWORD_AUTH",
+      AuthParameters: {
+        USERNAME: email,
+        PASSWORD: password,
+      },
+    })
+  );
+
+  if (resp.ChallengeName) {
+    throw new Error(`Auth challenge: ${resp.ChallengeName}`);
+  }
+
+  const result = resp.AuthenticationResult!;
+  const userResp = await client.send(
+    new GetUserCommand({ AccessToken: result.AccessToken! })
+  );
+
+  const sub = userResp.UserAttributes?.find((a) => a.Name === "sub")?.Value || "";
+  const userEmail = userResp.UserAttributes?.find((a) => a.Name === "email")?.Value || email;
+
+  const user: AuthUser = {
+    email: userEmail,
+    sub,
+    accessToken: result.AccessToken!,
+    idToken: result.IdToken!,
+    refreshToken: result.RefreshToken!,
+  };
+
+  saveTokens(user);
+  return user;
+}
+
+export async function refreshSession(): Promise<AuthUser | null> {
+  const stored = getStoredUser();
+  if (!stored?.refreshToken) return null;
+
+  try {
+    const resp = await client.send(
+      new InitiateAuthCommand({
+        ClientId: CLIENT_ID,
+        AuthFlow: "REFRESH_TOKEN_AUTH",
+        AuthParameters: {
+          REFRESH_TOKEN: stored.refreshToken,
+        },
+      })
+    );
+
+    const result = resp.AuthenticationResult!;
+    const user: AuthUser = {
+      ...stored,
+      accessToken: result.AccessToken!,
+      idToken: result.IdToken || stored.idToken,
+    };
+
+    saveTokens(user);
+    return user;
+  } catch {
+    clearAuth();
+    return null;
+  }
+}
+
+export async function signOut(): Promise<void> {
+  const stored = getStoredUser();
+  if (stored?.accessToken) {
+    try {
+      await client.send(
+        new GlobalSignOutCommand({ AccessToken: stored.accessToken })
+      );
+    } catch {
+      // Ignore errors during sign out
+    }
+  }
+  clearAuth();
+}
+
+// Google OAuth — redirect flow
+export function signInWithGoogle(): void {
+  const domain = import.meta.env.VITE_COGNITO_DOMAIN || "";
+  const redirectUri = `${window.location.origin}/login`;
+  const url = `https://${domain}/oauth2/authorize?response_type=code&client_id=${CLIENT_ID}&redirect_uri=${encodeURIComponent(redirectUri)}&identity_provider=Google&scope=openid+email+profile`;
+  window.location.href = url;
+}
+
+// Apple OAuth — redirect flow
+export function signInWithApple(): void {
+  const domain = import.meta.env.VITE_COGNITO_DOMAIN || "";
+  const redirectUri = `${window.location.origin}/login`;
+  const url = `https://${domain}/oauth2/authorize?response_type=code&client_id=${CLIENT_ID}&redirect_uri=${encodeURIComponent(redirectUri)}&identity_provider=SignInWithApple&scope=openid+email+profile`;
+  window.location.href = url;
+}
+
+// Exchange OAuth code for tokens
+export async function exchangeCode(code: string): Promise<AuthUser> {
+  const domain = import.meta.env.VITE_COGNITO_DOMAIN || "";
+  const redirectUri = `${window.location.origin}/login`;
+
+  const resp = await fetch(`https://${domain}/oauth2/token`, {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({
+      grant_type: "authorization_code",
+      code,
+      client_id: CLIENT_ID,
+      redirect_uri: redirectUri,
+    }),
+  });
+
+  const data = await resp.json();
+  if (!resp.ok) throw new Error(data.error || "Token exchange failed");
+
+  const userResp = await client.send(
+    new GetUserCommand({ AccessToken: data.access_token })
+  );
+
+  const sub = userResp.UserAttributes?.find((a) => a.Name === "sub")?.Value || "";
+  const email = userResp.UserAttributes?.find((a) => a.Name === "email")?.Value || "";
+
+  const user: AuthUser = {
+    email,
+    sub,
+    accessToken: data.access_token,
+    idToken: data.id_token,
+    refreshToken: data.refresh_token,
+  };
+
+  saveTokens(user);
+  return user;
+}

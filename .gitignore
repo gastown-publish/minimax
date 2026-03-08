@@ -16,6 +16,16 @@ src/*.egg-info/
 # Secrets — never commit actual keys
 litellm-config.yaml
 
+# Node
+node_modules/
+website/dist/
+website/node_modules/
+
+# Env files
+.env
+.env.local
+.env.*.local
+
 # IDE
 .vscode/
 .idea/
