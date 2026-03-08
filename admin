@@ -2,7 +2,7 @@
 # MiniMax-M2.5 Admin TUI launcher
 
 REPO_DIR="$(cd "$(dirname "$(readlink -f "$0")")" && pwd)"
-VENV="/home/nic/data/models/Kimi-K2.5-GGUF/.venv"
+VENV="/home/nic/data/models/MiniMax-M2.5/.venv"
 
 # Set master key from litellm config if not already set
 if [ -z "$LITELLM_MASTER_KEY" ] && [ -f "$REPO_DIR/litellm-config.yaml" ]; then

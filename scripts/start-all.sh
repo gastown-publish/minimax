@@ -3,7 +3,7 @@ set -e
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
-VENV="/home/nic/data/models/Kimi-K2.5-GGUF/.venv"
+VENV="/home/nic/data/models/MiniMax-M2.5/.venv"
 LITELLM_CONFIG="$REPO_DIR/litellm-config.yaml"
 LITELLM_LOG="/tmp/litellm-minimax.log"
 LITELLM_PID_FILE="/tmp/litellm-minimax.pid"

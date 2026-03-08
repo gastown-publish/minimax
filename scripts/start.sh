@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-VENV="/home/nic/data/models/Kimi-K2.5-GGUF/.venv"
+VENV="/home/nic/data/models/MiniMax-M2.5/.venv"
 MODEL="/home/nic/data/models/MiniMax-M2.5-HF"
 LOG="/tmp/vllm-minimax.log"
 PID_FILE="/tmp/vllm-minimax.pid"

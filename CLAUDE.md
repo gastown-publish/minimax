@@ -13,7 +13,7 @@ The server exposes an OpenAI-compatible API on port 8080. LiteLLM (port 4000) ha
 ## Key Paths
 
 - **Model weights**: `/home/nic/data/models/MiniMax-M2.5-HF/` (~230 GB, 126 safetensors shards, FP8)
-- **vLLM venv**: `/home/nic/data/models/Kimi-K2.5-GGUF/.venv/` (Python 3.12, vLLM 0.15.2rc1, shared with Kimi setup)
+- **vLLM venv**: `/home/nic/data/models/MiniMax-M2.5/.venv/` (Python 3.12, vLLM + LiteLLM)
 - **vLLM log**: `/tmp/vllm-minimax.log`
 - **LiteLLM log**: `/tmp/litellm-minimax.log`
 - **LiteLLM config**: `./litellm-config.yaml`
@@ -100,7 +100,7 @@ vllm serve /home/nic/data/models/MiniMax-M2.5-HF
 ## Infrastructure
 
 - **Caddy** (port 8090): Reverse proxy to LiteLLM on 4000
-- **PostgreSQL**: localhost:5432, database `litellm`, shared with Kimi deployment
+- **PostgreSQL**: localhost:5432, database `litellm`
 - **Tailscale**: Public endpoint via Funnel
 - **NVIDIA driver**: 590.48.01 required
 

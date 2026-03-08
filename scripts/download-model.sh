@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-VENV="/home/nic/data/models/Kimi-K2.5-GGUF/.venv"
+VENV="/home/nic/data/models/MiniMax-M2.5/.venv"
 MODEL_DIR="/home/nic/data/models/MiniMax-M2.5-HF"
 
 # Check venv
