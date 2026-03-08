@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "minimax-cli"
+version = "0.1.0"
+description = "Ollama-style CLI for MiniMax-M2.5 self-hosted inference"
+requires-python = ">=3.10"
+dependencies = [
+    "click>=8.0",
+    "httpx>=0.24",
+    "rich>=13.0",
+    "openai>=1.0",
+    "dnspython>=2.4",
+]
+
+[project.optional-dependencies]
+tui = ["textual>=0.40"]
+
+[project.scripts]
+minimax = "minimax_cli.main:cli"
+
+[tool.setuptools.packages.find]
+where = ["src"]

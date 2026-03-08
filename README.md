@@ -4,6 +4,59 @@ Self-hosted [MiniMax-M2.5](https://huggingface.co/MiniMaxAI/MiniMax-M2.5) infere
 
 Running on 8x NVIDIA H100 80GB with vLLM (tensor parallel + expert parallel), exposed as an **OpenAI-compatible API**.
 
+## CLI
+
+Ollama-style CLI for managing the server and chatting with the model.
+
+### Install
+
+```bash
+pip install -e .
+```
+
+### Commands
+
+```
+minimax run                 Interactive chat REPL with streaming + think blocks
+minimax serve               Start full stack (vLLM + LiteLLM)
+minimax serve --vllm-only   Start vLLM only
+minimax stop                Stop all servers
+minimax ps                  Show running processes, GPU usage, uptime
+minimax list                List available models
+minimax logs                Tail vLLM logs (--litellm for LiteLLM)
+minimax test                Run inference health checks
+minimax tui                 Launch admin TUI (key management)
+minimax auth login          Store API key
+minimax auth status         Check auth status
+minimax auth logout         Remove stored key
+minimax setup claude        Configure Claude Code
+minimax setup codex         Configure Codex CLI
+minimax setup openclaw      Configure OpenClaw
+minimax setup opencode      Configure OpenCode
+minimax setup aider         Configure Aider
+minimax setup continue      Configure Continue (VS Code/JetBrains)
+minimax setup cline         Print Cline setup instructions
+```
+
+### Quick Start
+
+```bash
+# Start the server
+minimax serve
+
+# Check status
+minimax ps
+
+# Start chatting
+minimax run
+
+# Configure Claude Code to use this server
+minimax auth login
+minimax setup claude
+```
+
+---
+
 | Benchmark | Score |
 |-----------|-------|
 | SWE-Bench Verified | **80.2%** |
@@ -430,13 +483,15 @@ vllm serve /path/to/MiniMax-M2.5-HF \
 
 ### API Key Management
 
-The included admin TUI manages API keys via [LiteLLM](https://github.com/BerriAI/litellm):
+The admin TUI manages API keys via [LiteLLM](https://github.com/BerriAI/litellm):
 
 ```bash
-./admin
+minimax tui
 ```
 
-Keys: `g` generate | `v` view | `b` set budget | `d` delete | `r` refresh | `q` quit
+Keys: `g` generate | `v` view | `e` email key | `b` set budget | `d` delete | `r` refresh | `q` quit
+
+Generated keys are persisted locally in `~/.config/minimax/keys.json` so they can be viewed anytime (not just at creation). When generating a key, you can provide an email to automatically send the key to the user via SES.
 
 ---
 

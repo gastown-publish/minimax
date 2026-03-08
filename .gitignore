@@ -4,6 +4,10 @@ __pycache__/
 *.pyo
 .venv/
 venv/
+dist/
+build/
+*.egg-info/
+src/*.egg-info/
 
 # Logs
 *.log
