@@ -1,0 +1,19 @@
+#!/bin/bash
+# MiniMax-M2.5 Admin TUI launcher
+
+REPO_DIR="$(cd "$(dirname "$(readlink -f "$0")")" && pwd)"
+VENV="/home/nic/data/models/Kimi-K2.5-GGUF/.venv"
+
+# Set master key from litellm config if not already set
+if [ -z "$LITELLM_MASTER_KEY" ] && [ -f "$REPO_DIR/litellm-config.yaml" ]; then
+    export LITELLM_MASTER_KEY=$(grep 'master_key:' "$REPO_DIR/litellm-config.yaml" | awk '{print $2}' | tr -d '"')
+fi
+
+# Ensure textual + httpx are installed
+if ! "$VENV/bin/python" -c "import textual, httpx" 2>/dev/null; then
+    echo "Installing TUI dependencies..."
+    "$VENV/bin/pip" install -q textual httpx
+fi
+
+cd "$REPO_DIR"
+exec "$VENV/bin/python" -m tui.app

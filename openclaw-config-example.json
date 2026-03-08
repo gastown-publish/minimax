@@ -1,0 +1,47 @@
+{
+  "models": {
+    "mode": "merge",
+    "providers": [
+      {
+        "id": "minimax-local",
+        "name": "MiniMax-M2.5 (Local vLLM)",
+        "api": "openai-completions",
+        "baseUrl": "http://localhost:8080/v1",
+        "apiKey": "none",
+        "models": [
+          {
+            "id": "MiniMaxAI/MiniMax-M2.5",
+            "name": "MiniMax-M2.5 (128K context)",
+            "contextWindow": 131072,
+            "maxTokens": 131072,
+            "description": "MiniMax-M2.5 with 128K context window, FP8 precision, expert parallel across 8x H100"
+          }
+        ]
+      },
+      {
+        "id": "minimax-litellm",
+        "name": "MiniMax-M2.5 (LiteLLM Proxy)",
+        "api": "openai-completions",
+        "baseUrl": "http://localhost:4000/v1",
+        "apiKey": "sk-1564f41cd82a7303e6e3eb15cedc15eb76d1a3f556d8b890",
+        "timeout": 600000,
+        "models": [
+          {
+            "id": "minimax-m2.5",
+            "name": "MiniMax-M2.5 (short name)",
+            "contextWindow": 131072,
+            "maxTokens": 131072,
+            "description": "MiniMax-M2.5 via LiteLLM with cost tracking"
+          },
+          {
+            "id": "MiniMaxAI/MiniMax-M2.5",
+            "name": "MiniMax-M2.5 (full name)",
+            "contextWindow": 131072,
+            "maxTokens": 131072,
+            "description": "MiniMax-M2.5 via LiteLLM with cost tracking"
+          }
+        ]
+      }
+    ]
+  }
+}
