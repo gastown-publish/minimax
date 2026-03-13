@@ -26,6 +26,10 @@ function stripToolCalls(text: string): string {
   let cleaned = text.replace(/<\/?minimax:tool_call>/g, "");
   // Remove <invoke name="...">...</invoke> blocks
   cleaned = cleaned.replace(/<invoke\s+name="[^"]*">[\s\S]*?<\/invoke>/g, "");
+  // Remove <FunctionCall>...</FunctionCall> blocks (model sometimes uses this format)
+  cleaned = cleaned.replace(/<FunctionCall>[\s\S]*?<\/FunctionCall>/g, "");
+  // Remove unclosed <FunctionCall> at end of streaming content
+  cleaned = cleaned.replace(/<FunctionCall>[\s\S]*$/g, "");
   // Remove standalone minimax:tool_call text markers
   cleaned = cleaned.replace(/minimax:tool_call/g, "");
   return cleaned.trim();
@@ -178,6 +182,22 @@ async function streamCompletion(
     } else {
       finalReasoning = rawContent.slice(thinkStart + 7).trim();
       finalContent = "";
+    }
+  }
+
+  // If vLLM didn't produce structured tool_calls but model emitted <FunctionCall> XML,
+  // parse them out and create PendingToolCall entries so the tool loop still works.
+  if (pendingToolCalls.length === 0) {
+    const fcRegex = /<FunctionCall>\s*\{[^}]*'tool'\s*:\s*'([^']+)'[^}]*'args'\s*:\s*'([^']*)'[^}]*\}\s*<\/FunctionCall>/g;
+    let match;
+    while ((match = fcRegex.exec(rawContent)) !== null) {
+      const toolName = match[1] === "google_search" ? "web_search" : match[1];
+      const rawArgs = match[2].replace(/^\s*--query\s+/, "").replace(/^["']|["']$/g, "").trim();
+      pendingToolCalls.push({
+        id: `fc_${Date.now()}_${pendingToolCalls.length}`,
+        name: toolName,
+        arguments: JSON.stringify({ query: rawArgs }),
+      });
     }
   }
 
