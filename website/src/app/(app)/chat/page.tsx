@@ -76,21 +76,25 @@ async function streamCompletion(
   settings: ChatSettings,
   signal: AbortSignal,
   onDelta: (content: string, reasoning: string) => void,
+  noTools?: boolean,
 ): Promise<StreamResult> {
+  const body: Record<string, unknown> = {
+    model: settings.model,
+    messages: apiMessages,
+    stream: true,
+    temperature: settings.temperature,
+    max_tokens: settings.maxTokens,
+  };
+  if (!noTools) {
+    body.tools = TOOLS;
+  }
   const resp = await fetch(`${API_BASE}/chat/completions`, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${apiKey}`,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({
-      model: settings.model,
-      messages: apiMessages,
-      stream: true,
-      temperature: settings.temperature,
-      max_tokens: settings.maxTokens,
-      tools: TOOLS,
-    }),
+    body: JSON.stringify(body),
     signal,
   });
 
@@ -500,6 +504,35 @@ export default function ChatPage() {
         });
 
         // Loop will stream the next completion
+      }
+
+      // If we exhausted iterations and content is empty, do one final stream without tools
+      // to force the model to generate a text response
+      if (!finalContent.trim()) {
+        const result = await streamCompletion(
+          apiMessages,
+          apiKey,
+          { ...settings, model: settings.model },
+          controller.signal,
+          (displayContent, displayReasoning) => {
+            setMessages((prev) => {
+              const updated = [...prev];
+              const last = updated[updated.length - 1];
+              if (last.role === "assistant") {
+                updated[updated.length - 1] = {
+                  ...last,
+                  content: displayContent,
+                  reasoning: displayReasoning,
+                  isStreaming: true,
+                };
+              }
+              return updated;
+            });
+          },
+          true, // noTools flag
+        );
+        finalContent = result.content;
+        finalReasoning = result.reasoning || finalReasoning;
       }
 
       // Finalize the assistant message
