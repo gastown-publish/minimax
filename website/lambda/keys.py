@@ -101,12 +101,28 @@ def handler(event, context):
             if count >= max_keys:
                 return _response(400, {"error": f"Key limit reached ({max_keys} for {tier} tier)"})
 
+        # Set budget on the USER, not the key — prevents gaming by creating multiple keys
+        try:
+            _litellm_request("POST", "/user/new", {
+                "user_id": user_id,
+                "max_budget": limits["max_budget"],
+                "user_email": email,
+            })
+        except Exception:
+            # User may already exist — try update instead
+            try:
+                _litellm_request("POST", "/user/update", {
+                    "user_id": user_id,
+                    "max_budget": limits["max_budget"],
+                })
+            except Exception:
+                pass  # Non-fatal — key still works, just no user-level budget cap
+
         body = json.loads(event.get("body", "{}") or "{}")
         alias = body.get("alias", "")
 
         payload = {
             "user_id": user_id,
-            "max_budget": limits["max_budget"],
             "metadata": {"tier": tier, "email": email},
         }
         if alias:
