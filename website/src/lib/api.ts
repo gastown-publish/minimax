@@ -1,6 +1,6 @@
-import { getIdToken } from "./auth";
+import { getIdToken, refreshSession } from "./auth";
 
-const API_BASE = import.meta.env.VITE_API_BASE || "https://api.minimax.villamarket.ai";
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "https://api.minimax.villamarket.ai";
 
 async function apiFetch<T>(path: string, options: RequestInit = {}): Promise<T> {
   const token = getIdToken();
@@ -12,6 +12,27 @@ async function apiFetch<T>(path: string, options: RequestInit = {}): Promise<T> 
       ...options.headers,
     },
   });
+
+  // Auto-refresh expired tokens and retry
+  if (resp.status === 401 && token) {
+    const refreshed = await refreshSession();
+    if (refreshed) {
+      const newToken = getIdToken();
+      const retry = await fetch(`${API_BASE}${path}`, {
+        ...options,
+        headers: {
+          "Content-Type": "application/json",
+          ...(newToken ? { Authorization: `Bearer ${newToken}` } : {}),
+          ...options.headers,
+        },
+      });
+      if (!retry.ok) {
+        const body = await retry.json().catch(() => ({}));
+        throw new Error(body.error || body.message || `API error ${retry.status}`);
+      }
+      return retry.json();
+    }
+  }
 
   if (!resp.ok) {
     const body = await resp.json().catch(() => ({}));
@@ -55,10 +76,14 @@ export interface CheckoutResponse {
   sessionId: string;
 }
 
-export async function createCheckout(tier: string, promoCode?: string): Promise<CheckoutResponse> {
+export async function createCheckout(
+  tier: string,
+  billingPeriod: "monthly" | "yearly" = "monthly",
+  promoCode?: string,
+): Promise<CheckoutResponse> {
   return apiFetch<CheckoutResponse>("/api/checkout", {
     method: "POST",
-    body: JSON.stringify({ tier, promo_code: promoCode }),
+    body: JSON.stringify({ tier, billing_period: billingPeriod, promo_code: promoCode }),
   });
 }
 

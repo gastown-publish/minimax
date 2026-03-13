@@ -1,6 +1,8 @@
+"use client";
+
 import MarkdownRenderer from "./MarkdownRenderer";
 import ThinkBlock from "./ThinkBlock";
-import { User, Bot } from "lucide-react";
+import { User, Bot, Search } from "lucide-react";
 
 export interface Message {
   id: string;
@@ -8,6 +10,8 @@ export interface Message {
   content: string;
   reasoning?: string;
   isStreaming?: boolean;
+  toolCalls?: { name: string; query: string }[];
+  toolStatus?: "executing" | "done";
 }
 
 interface ChatMessageProps {
@@ -50,6 +54,27 @@ export default function ChatMessage({ message }: ChatMessageProps) {
             content={message.reasoning}
             isStreaming={message.isStreaming}
           />
+        )}
+
+        {message.toolCalls && message.toolCalls.length > 0 && (
+          <div className="flex flex-col gap-1 mb-2">
+            {message.toolCalls.map((tc, i) => (
+              <div
+                key={i}
+                className="flex items-center gap-2 text-xs text-[var(--text-secondary)] bg-[var(--bg-tertiary)] px-3 py-1.5 rounded-md w-fit"
+              >
+                <Search
+                  size={12}
+                  className={message.toolStatus === "executing" ? "animate-pulse" : ""}
+                />
+                <span>
+                  {message.toolStatus === "executing"
+                    ? `Searching for "${tc.query}"...`
+                    : `Searched for "${tc.query}"`}
+                </span>
+              </div>
+            ))}
+          </div>
         )}
 
         {isUser ? (

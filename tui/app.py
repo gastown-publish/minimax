@@ -240,22 +240,37 @@ class MiniMaxAdmin(App):
             return
         status.update("[green bold]LiteLLM ONLINE[/] — port 4000")
 
-        data = await api_get(
-            f"{LITELLM_URL}/key/list?return_full_object=true", headers=auth_headers()
-        )
+        # Fetch all pages of keys
+        all_keys = []
+        page = 1
+        while True:
+            data = await api_get(
+                f"{LITELLM_URL}/key/list?return_full_object=true&page={page}",
+                headers=auth_headers(),
+            )
+            if not data:
+                break
+            page_keys = data if isinstance(data, list) else data.get("keys", [])
+            if not page_keys:
+                break
+            all_keys.extend(page_keys)
+            total_pages = data.get("total_pages", 1) if isinstance(data, dict) else 1
+            if page >= total_pages:
+                break
+            page += 1
+
         table = self.query_one("#keys-table", DataTable)
         table.clear()
         total_label = self.query_one("#total", Static)
 
-        if not data:
+        if not all_keys:
             total_label.update("[red]Failed to fetch keys[/]")
             return
 
-        keys = data if isinstance(data, list) else data.get("keys", [])
         store = _load_key_store()
         total_spend = 0.0
 
-        for k in keys:
+        for k in all_keys:
             if not isinstance(k, dict):
                 continue
             token = k.get("token", k.get("key", ""))
@@ -269,9 +284,12 @@ class MiniMaxAdmin(App):
             remaining = f"${budget - spend:.2f}" if budget is not None else "n/a"
             created = (k.get("created_at") or "")[:10]
 
-            # Get email from persistent store
+            # Get email from persistent store, fall back to LiteLLM metadata
             stored = store.get(token, {})
             email = stored.get("email", "")
+            if not email:
+                meta = k.get("metadata") or {}
+                email = meta.get("email", "")
 
             total_spend += spend
             table.add_row(
@@ -279,7 +297,7 @@ class MiniMaxAdmin(App):
                 key=token,
             )
 
-        total_label.update(f"Keys: {len(keys)}  |  Total spend: ${total_spend:.4f}")
+        total_label.update(f"Keys: {len(all_keys)}  |  Total spend: ${total_spend:.4f}")
 
     @work(exclusive=True, group="gen")
     async def _generate_key(self) -> None:
@@ -382,12 +400,24 @@ class MiniMaxAdmin(App):
             output.update("[yellow]Select a key row first[/]")
             return
 
-        # Fetch fresh key info from LiteLLM
-        data = await api_get(
-            f"{LITELLM_URL}/key/list?return_full_object=true", headers=auth_headers()
-        )
-        keys = (data if isinstance(data, list) else data.get("keys", [])) if data else []
-        k = next((x for x in keys if isinstance(x, dict) and x.get("token") == token), None)
+        # Fetch key info from LiteLLM (search all pages)
+        k = None
+        page = 1
+        while True:
+            data = await api_get(
+                f"{LITELLM_URL}/key/list?return_full_object=true&page={page}",
+                headers=auth_headers(),
+            )
+            if not data:
+                break
+            page_keys = data if isinstance(data, list) else data.get("keys", [])
+            k = next((x for x in page_keys if isinstance(x, dict) and x.get("token") == token), None)
+            if k:
+                break
+            total_pages = data.get("total_pages", 1) if isinstance(data, dict) else 1
+            if page >= total_pages:
+                break
+            page += 1
 
         if not k:
             output.update("[red]Key not found[/]")
@@ -409,10 +439,13 @@ class MiniMaxAdmin(App):
         else:
             key_line = f"  Key:       {key_name}  [dim](not in local key store)[/]"
 
-        # Get email from persistent store
+        # Get email from persistent store, fall back to LiteLLM metadata
         store = _load_key_store()
         stored = store.get(token, {})
-        email = stored.get("email", "(none)")
+        email = stored.get("email", "")
+        if not email:
+            meta = k.get("metadata") or {}
+            email = meta.get("email", "(none)")
 
         output.update(
             f"[bold]Key Details[/]\n"

@@ -27,6 +27,10 @@ fi
 if ss -tlnp | grep -q ":4000 "; then
     echo "LiteLLM already running on port 4000"
 else
+    # Database connection for API key persistence
+    export DATABASE_URL="postgresql://litellm:litellm_pass@127.0.0.1:5432/litellm"
+    export LD_LIBRARY_PATH=""
+
     nohup "$VENV/bin/litellm" \
         --config "$LITELLM_CONFIG" \
         --host 0.0.0.0 \

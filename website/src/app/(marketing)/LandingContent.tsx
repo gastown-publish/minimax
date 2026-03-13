@@ -1,8 +1,11 @@
-import { Link } from "react-router-dom";
-import { getStoredUser } from "../auth";
-import PricingCard from "../components/PricingCard";
-import { TIERS } from "../stripe";
-import { redirectToCheckout } from "../stripe";
+"use client";
+
+import Link from "next/link";
+import { useAuth } from "@/components/AuthProvider";
+import PricingCard from "@/components/PricingCard";
+import PricingToggle from "@/components/PricingToggle";
+import { TIERS, type BillingPeriod } from "@/lib/stripe";
+import { useState } from "react";
 import {
   Zap,
   Code,
@@ -13,19 +16,17 @@ import {
   Globe,
 } from "lucide-react";
 
-export default function Landing() {
-  const user = getStoredUser();
+export default function LandingContent() {
+  const { user } = useAuth();
+  const [billingPeriod, setBillingPeriod] = useState<BillingPeriod>("monthly");
 
-  const handleTierSelect = async (tierId: string) => {
-    if (!user) {
-      window.location.href = "/login";
-      return;
-    }
+  const handleTierSelect = (tierId: string) => {
     if (tierId === "free") {
-      window.location.href = "/dashboard";
+      window.location.href = user ? "/dashboard" : "/login";
       return;
     }
-    await redirectToCheckout(tierId);
+    // Pro/Enterprise — redirect to login if not authed, otherwise dashboard
+    window.location.href = user ? "/dashboard" : "/login";
   };
 
   return (
@@ -45,14 +46,14 @@ export default function Landing() {
         </p>
         <div className="flex flex-wrap items-center justify-center gap-4">
           <Link
-            to={user ? "/chat" : "/login"}
+            href={user ? "/chat" : "/login"}
             className="btn-primary inline-flex items-center gap-2 text-lg px-6 py-3"
           >
             {user ? "Open Chat" : "Get Started"}
             <ArrowRight size={18} />
           </Link>
           <Link
-            to="/docs"
+            href="/docs"
             className="btn-secondary inline-flex items-center gap-2 text-lg px-6 py-3"
           >
             <Terminal size={16} />
@@ -127,14 +128,16 @@ export default function Landing() {
       {/* Pricing */}
       <section className="max-w-6xl mx-auto px-4 sm:px-6 py-16" id="pricing">
         <h2 className="text-2xl font-bold text-center mb-4">Pricing</h2>
-        <p className="text-center text-[var(--text-secondary)] mb-12">
+        <p className="text-center text-[var(--text-secondary)] mb-8">
           Simple, transparent pricing. Start free, scale as you grow.
         </p>
-        <div className="grid md:grid-cols-3 gap-6 max-w-4xl mx-auto">
+        <PricingToggle value={billingPeriod} onChange={setBillingPeriod} />
+        <div className="grid md:grid-cols-3 gap-6 max-w-4xl mx-auto mt-8">
           {TIERS.map((tier) => (
             <PricingCard
               key={tier.id}
-              {...tier}
+              tier={tier}
+              billingPeriod={billingPeriod}
               onSelect={() => handleTierSelect(tier.id)}
             />
           ))}
@@ -152,7 +155,7 @@ export default function Landing() {
             Get your API key in seconds. No credit card required for the free tier.
           </p>
           <Link
-            to={user ? "/dashboard" : "/login"}
+            href={user ? "/dashboard" : "/login"}
             className="btn-primary inline-flex items-center gap-2 px-6 py-3"
           >
             {user ? "Go to Dashboard" : "Create Free Account"}
@@ -160,26 +163,6 @@ export default function Landing() {
           </Link>
         </div>
       </section>
-
-      {/* Footer */}
-      <footer className="border-t border-[var(--border)] py-8">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 flex flex-wrap items-center justify-between text-sm text-[var(--text-secondary)]">
-          <span>MiniMax-M2.5 API by villamarket.ai</span>
-          <div className="flex gap-4">
-            <Link to="/docs" className="hover:text-[var(--text-primary)]">
-              Docs
-            </Link>
-            <a
-              href="https://huggingface.co/MiniMaxAI/MiniMax-M2.5"
-              target="_blank"
-              rel="noopener"
-              className="hover:text-[var(--text-primary)]"
-            >
-              Model
-            </a>
-          </div>
-        </div>
-      </footer>
     </div>
   );
 }

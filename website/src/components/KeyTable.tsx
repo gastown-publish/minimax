@@ -1,6 +1,8 @@
+"use client";
+
 import { useState } from "react";
 import { Copy, Trash2, Eye, EyeOff } from "lucide-react";
-import type { ApiKey } from "../api";
+import type { ApiKey } from "@/lib/api";
 
 interface KeyTableProps {
   keys: ApiKey[];

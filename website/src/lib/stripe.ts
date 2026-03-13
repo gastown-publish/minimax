@@ -1,24 +1,46 @@
 import { createCheckout } from "./api";
 
-export async function redirectToCheckout(tier: string, promoCode?: string): Promise<void> {
-  const { url } = await createCheckout(tier, promoCode);
-  // Stripe checkout sessions return a URL — redirect to it
+export type BillingPeriod = "monthly" | "yearly";
+
+export async function redirectToCheckout(
+  tier: string,
+  billingPeriod: BillingPeriod = "monthly",
+  promoCode?: string,
+): Promise<void> {
+  const { url } = await createCheckout(tier, billingPeriod, promoCode);
   window.location.href = url;
 }
 
-export const TIERS = [
+export interface Tier {
+  id: string;
+  name: string;
+  price: string;
+  yearlyPrice: string;
+  yearlyTotal: string;
+  period: string;
+  budget: string;
+  rpm: string;
+  keys: string;
+  features: readonly string[];
+  cta: string;
+  popular: boolean;
+}
+
+export const TIERS: Tier[] = [
   {
     id: "free",
     name: "Free",
     price: "$0",
+    yearlyPrice: "$0",
+    yearlyTotal: "$0",
     period: "/mo",
-    budget: "$1",
+    budget: "$5",
     rpm: "5",
-    keys: "1",
+    keys: "5",
     features: [
-      "$1/month API budget",
+      "$5/month API budget",
       "5 requests per minute",
-      "1 API key",
+      "5 API keys",
       "128K context",
       "Community support",
     ],
@@ -29,6 +51,8 @@ export const TIERS = [
     id: "pro",
     name: "Pro",
     price: "$20",
+    yearlyPrice: "$16",
+    yearlyTotal: "$192",
     period: "/mo",
     budget: "$20",
     rpm: "16",
@@ -48,6 +72,8 @@ export const TIERS = [
     id: "enterprise",
     name: "Enterprise",
     price: "$100",
+    yearlyPrice: "$80",
+    yearlyTotal: "$960",
     period: "/mo",
     budget: "$100",
     rpm: "Unlimited",
@@ -64,4 +90,4 @@ export const TIERS = [
     cta: "Go Enterprise",
     popular: false,
   },
-] as const;
+];

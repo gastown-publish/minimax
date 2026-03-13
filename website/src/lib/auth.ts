@@ -7,9 +7,8 @@ import {
   GlobalSignOutCommand,
 } from "@aws-sdk/client-cognito-identity-provider";
 
-// Cognito configuration — will be set up via AWS console
 const REGION = "us-east-1";
-const CLIENT_ID = import.meta.env.VITE_COGNITO_CLIENT_ID || "";
+const CLIENT_ID = process.env.NEXT_PUBLIC_COGNITO_CLIENT_ID || "";
 
 const client = new CognitoIdentityProviderClient({ region: REGION });
 
@@ -28,6 +27,7 @@ function saveTokens(user: AuthUser): void {
 }
 
 export function getStoredUser(): AuthUser | null {
+  if (typeof window === "undefined") return null;
   const stored = localStorage.getItem(STORAGE_KEY);
   if (!stored) return null;
   try {
@@ -152,7 +152,7 @@ export async function signOut(): Promise<void> {
 
 // Google OAuth — redirect flow
 export function signInWithGoogle(): void {
-  const domain = import.meta.env.VITE_COGNITO_DOMAIN || "";
+  const domain = process.env.NEXT_PUBLIC_COGNITO_DOMAIN || "";
   const redirectUri = `${window.location.origin}/login`;
   const url = `https://${domain}/oauth2/authorize?response_type=code&client_id=${CLIENT_ID}&redirect_uri=${encodeURIComponent(redirectUri)}&identity_provider=Google&scope=openid+email+profile`;
   window.location.href = url;
@@ -160,15 +160,21 @@ export function signInWithGoogle(): void {
 
 // Apple OAuth — redirect flow
 export function signInWithApple(): void {
-  const domain = import.meta.env.VITE_COGNITO_DOMAIN || "";
+  const domain = process.env.NEXT_PUBLIC_COGNITO_DOMAIN || "";
   const redirectUri = `${window.location.origin}/login`;
   const url = `https://${domain}/oauth2/authorize?response_type=code&client_id=${CLIENT_ID}&redirect_uri=${encodeURIComponent(redirectUri)}&identity_provider=SignInWithApple&scope=openid+email+profile`;
   window.location.href = url;
 }
 
+// Decode JWT payload without verification (tokens come from Cognito over HTTPS)
+function decodeJwtPayload(token: string): Record<string, unknown> {
+  const base64 = token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
+  return JSON.parse(atob(base64));
+}
+
 // Exchange OAuth code for tokens
 export async function exchangeCode(code: string): Promise<AuthUser> {
-  const domain = import.meta.env.VITE_COGNITO_DOMAIN || "";
+  const domain = process.env.NEXT_PUBLIC_COGNITO_DOMAIN || "";
   const redirectUri = `${window.location.origin}/login`;
 
   const resp = await fetch(`https://${domain}/oauth2/token`, {
@@ -185,16 +191,12 @@ export async function exchangeCode(code: string): Promise<AuthUser> {
   const data = await resp.json();
   if (!resp.ok) throw new Error(data.error || "Token exchange failed");
 
-  const userResp = await client.send(
-    new GetUserCommand({ AccessToken: data.access_token })
-  );
-
-  const sub = userResp.UserAttributes?.find((a) => a.Name === "sub")?.Value || "";
-  const email = userResp.UserAttributes?.find((a) => a.Name === "email")?.Value || "";
+  // Parse ID token for user claims (OAuth access tokens lack aws.cognito.signin.user.admin scope)
+  const claims = decodeJwtPayload(data.id_token);
 
   const user: AuthUser = {
-    email,
-    sub,
+    email: (claims.email as string) || "",
+    sub: (claims.sub as string) || "",
     accessToken: data.access_token,
     idToken: data.id_token,
     refreshToken: data.refresh_token,

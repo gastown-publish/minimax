@@ -1,5 +1,8 @@
-import { useState, useEffect } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+"use client";
+
+import { Suspense, useState, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useAuth } from "@/components/AuthProvider";
 import {
   signIn,
   signUp,
@@ -7,15 +10,23 @@ import {
   signInWithGoogle,
   signInWithApple,
   exchangeCode,
-  getStoredUser,
-} from "../auth";
+} from "@/lib/auth";
 import { Mail, Lock, ArrowRight, Loader2 } from "lucide-react";
 
 type AuthMode = "signin" | "signup" | "confirm";
 
-export default function Login() {
-  const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
+export default function LoginPage() {
+  return (
+    <Suspense>
+      <LoginContent />
+    </Suspense>
+  );
+}
+
+function LoginContent() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const { user, refresh } = useAuth();
   const [mode, setMode] = useState<AuthMode>("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -25,10 +36,10 @@ export default function Login() {
 
   // Redirect if already logged in
   useEffect(() => {
-    if (getStoredUser()) {
-      navigate("/dashboard");
+    if (user) {
+      router.push("/dashboard");
     }
-  }, [navigate]);
+  }, [user, router]);
 
   // Handle OAuth callback
   useEffect(() => {
@@ -36,13 +47,16 @@ export default function Login() {
     if (authCode) {
       setLoading(true);
       exchangeCode(authCode)
-        .then(() => navigate("/dashboard"))
+        .then(() => {
+          refresh();
+          router.push("/dashboard");
+        })
         .catch((e) => {
           setError(e.message);
           setLoading(false);
         });
     }
-  }, [searchParams, navigate]);
+  }, [searchParams, router, refresh]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -56,13 +70,15 @@ export default function Login() {
       } else if (mode === "confirm") {
         await confirmSignUp(email, code);
         await signIn(email, password);
-        navigate("/dashboard");
+        refresh();
+        router.push("/dashboard");
       } else {
         await signIn(email, password);
-        navigate("/dashboard");
+        refresh();
+        router.push("/dashboard");
       }
-    } catch (err: any) {
-      setError(err.message || "Authentication failed");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Authentication failed");
     } finally {
       setLoading(false);
     }
@@ -218,7 +234,7 @@ export default function Login() {
           <p className="text-center text-sm text-[var(--text-secondary)] mt-6">
             {mode === "signin" ? (
               <>
-                Don't have an account?{" "}
+                Don&apos;t have an account?{" "}
                 <button
                   onClick={() => {
                     setMode("signup");

@@ -12,7 +12,7 @@ npm run build
 
 echo ""
 echo "=== Deploying to S3 ==="
-aws s3 sync dist/ "s3://$S3_BUCKET/" --delete --region us-east-1
+aws s3 sync out/ "s3://$S3_BUCKET/" --delete --region us-east-1
 
 echo ""
 echo "=== Invalidating CloudFront ==="

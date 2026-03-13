@@ -1,3 +1,5 @@
+"use client";
+
 import { useState } from "react";
 import { Copy, Check } from "lucide-react";
 
@@ -20,7 +22,7 @@ function CopyButton({ text }: { text: string }) {
   );
 }
 
-function CodeBlock({ code }: { code: string; lang?: string }) {
+function CodeBlock({ code }: { code: string }) {
   return (
     <div className="relative group">
       <pre className="bg-[var(--bg-tertiary)] border border-[var(--border)] rounded-lg p-4 overflow-x-auto text-sm">
@@ -31,7 +33,7 @@ function CodeBlock({ code }: { code: string; lang?: string }) {
   );
 }
 
-export default function Docs() {
+export default function DocsContent() {
   const [activeSection, setActiveSection] = useState("quickstart");
 
   const sections = [
@@ -103,7 +105,6 @@ export default function Docs() {
 
             <h3 className="font-semibold mt-6 mb-3">Python (OpenAI SDK)</h3>
             <CodeBlock
-              lang="python"
               code={`from openai import OpenAI
 
 client = OpenAI(
@@ -121,7 +122,6 @@ print(response.choices[0].message.content)`}
 
             <h3 className="font-semibold mt-6 mb-3">JavaScript/TypeScript</h3>
             <CodeBlock
-              lang="typescript"
               code={`import OpenAI from "openai";
 
 const client = new OpenAI({
@@ -205,7 +205,6 @@ console.log(response.choices[0].message.content);`}
               the new content.
             </p>
             <CodeBlock
-              lang="python"
               code={`stream = client.chat.completions.create(
     model="minimax-m2.5",
     messages=[{"role": "user", "content": "Explain MoE"}],
@@ -229,7 +228,6 @@ for chunk in stream:
               <code className="text-sky-300 bg-[var(--bg-tertiary)] px-1 rounded">tools</code> parameter.
             </p>
             <CodeBlock
-              lang="python"
               code={`response = client.chat.completions.create(
     model="minimax-m2.5",
     messages=[{"role": "user", "content": "What's the weather in Tokyo?"}],
@@ -267,7 +265,6 @@ print(tool_call.function.arguments)  # '{"city": "Tokyo"}'`}
               before the main response in <code className="text-sky-300 bg-[var(--bg-tertiary)] px-1 rounded">delta.content</code>.
             </p>
             <CodeBlock
-              lang="python"
               code={`# The model automatically uses <think>...</think> blocks
 # vLLM separates these into reasoning_content and content
 
@@ -383,7 +380,6 @@ Model: minimax-m2.5`}
 
             <h3 className="font-semibold mt-6 mb-3">Continue (VS Code)</h3>
             <CodeBlock
-              lang="json"
               code={`{
   "models": [{
     "title": "MiniMax-M2.5",

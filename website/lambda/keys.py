@@ -13,11 +13,11 @@ import urllib.error
 from datetime import datetime
 
 LITELLM_URL = os.environ.get("LITELLM_URL", "http://localhost:4000")
-LITELLM_MASTER_KEY = os.environ["LITELLM_MASTER_KEY"]
+LITELLM_MASTER_KEY = os.environ.get("LITELLM_MASTER_KEY", "")
 
 # Tier limits
 TIER_LIMITS = {
-    "free": {"max_budget": 1.0, "rpm_limit": 5, "max_keys": 1},
+    "free": {"max_budget": 5.0, "rpm_limit": 5, "max_keys": 5},
     "pro": {"max_budget": 20.0, "rpm_limit": 16, "max_keys": 5},
     "enterprise": {"max_budget": 100.0, "rpm_limit": None, "max_keys": None},
 }
@@ -81,12 +81,9 @@ def handler(event, context):
     if method == "OPTIONS":
         return _response(200, {})
 
-    # Extract user from JWT claims
-    claims = (
-        event.get("requestContext", {})
-        .get("authorizer", {})
-        .get("claims", {})
-    )
+    # Extract user from JWT claims (HTTP API v2 uses authorizer.jwt.claims)
+    authorizer = event.get("requestContext", {}).get("authorizer", {})
+    claims = authorizer.get("jwt", {}).get("claims", {}) or authorizer.get("claims", {})
     user_id = claims.get("sub", "")
     email = claims.get("email", "")
 
@@ -117,7 +114,10 @@ def handler(event, context):
         if limits["rpm_limit"]:
             payload["rpm_limit"] = limits["rpm_limit"]
 
-        result = _litellm_request("POST", "/key/generate", payload)
+        try:
+            result = _litellm_request("POST", "/key/generate", payload)
+        except Exception as e:
+            return _response(400, {"error": str(e)})
         return _response(200, {
             "token": result.get("token", ""),
             "key": result.get("key", ""),
@@ -129,7 +129,10 @@ def handler(event, context):
         })
 
     elif method == "GET" and path.rstrip("/") == "/api/keys":
-        data = _litellm_request("GET", f"/key/list?user_id={user_id}&return_full_object=true")
+        try:
+            data = _litellm_request("GET", f"/key/list?user_id={user_id}&return_full_object=true")
+        except Exception as e:
+            return _response(500, {"error": str(e)})
         keys = data if isinstance(data, list) else data.get("keys", [])
         result = []
         for k in keys:
@@ -146,7 +149,10 @@ def handler(event, context):
 
     elif method == "DELETE" and "/api/keys/" in path:
         token = path.split("/api/keys/")[-1]
-        _litellm_request("POST", "/key/delete", {"keys": [token]})
+        try:
+            _litellm_request("POST", "/key/delete", {"keys": [token]})
+        except Exception as e:
+            return _response(400, {"error": str(e)})
         return _response(200, {"deleted": True})
 
     return _response(404, {"error": "Not found"})

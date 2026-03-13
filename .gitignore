@@ -20,6 +20,8 @@ litellm-config.yaml
 node_modules/
 website/dist/
 website/node_modules/
+website/.next/
+website/out/
 
 # Env files
 .env

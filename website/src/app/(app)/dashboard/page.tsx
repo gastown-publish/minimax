@@ -1,6 +1,8 @@
+"use client";
+
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
-import { getStoredUser } from "../auth";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/components/AuthProvider";
 import {
   listKeys,
   createKey,
@@ -11,10 +13,11 @@ import {
   type ApiKey,
   type Subscription,
   type ReferralInfo,
-} from "../api";
-import { redirectToCheckout, TIERS } from "../stripe";
-import KeyTable from "../components/KeyTable";
-import PricingCard from "../components/PricingCard";
+} from "@/lib/api";
+import { TIERS, type BillingPeriod, redirectToCheckout } from "@/lib/stripe";
+import KeyTable from "@/components/KeyTable";
+import PricingCard from "@/components/PricingCard";
+import PricingToggle from "@/components/PricingToggle";
 import {
   Key,
   Plus,
@@ -25,9 +28,9 @@ import {
   AlertCircle,
 } from "lucide-react";
 
-export default function Dashboard() {
-  const navigate = useNavigate();
-  const user = getStoredUser();
+export default function DashboardPage() {
+  const router = useRouter();
+  const { user, loading: authLoading } = useAuth();
 
   const [keys, setKeys] = useState<ApiKey[]>([]);
   const [subscription, setSubscription] = useState<Subscription | null>(null);
@@ -40,14 +43,17 @@ export default function Dashboard() {
   const [referralMsg, setReferralMsg] = useState("");
   const [error, setError] = useState("");
   const [tab, setTab] = useState<"keys" | "billing" | "referral">("keys");
+  const [billingPeriod, setBillingPeriod] = useState<BillingPeriod>("monthly");
 
   useEffect(() => {
+    if (authLoading) return;
     if (!user) {
-      navigate("/login");
+      router.push("/login");
       return;
     }
     loadData();
-  }, []);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, authLoading]);
 
   const loadData = async () => {
     setLoading(true);
@@ -73,10 +79,16 @@ export default function Dashboard() {
     try {
       const key = await createKey(newKeyAlias || undefined);
       setNewKey(key.key);
+      // Store full key for chat playground (list API only returns masked keys)
+      if (key.key && key.key.startsWith("sk-")) {
+        const stored = JSON.parse(localStorage.getItem("minimax_api_keys") || "[]");
+        stored.push(key.key);
+        localStorage.setItem("minimax_api_keys", JSON.stringify(stored));
+      }
       setNewKeyAlias("");
       await loadData();
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to create key");
     } finally {
       setCreating(false);
     }
@@ -87,8 +99,8 @@ export default function Dashboard() {
     try {
       await deleteKey(token);
       await loadData();
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to delete key");
     }
   };
 
@@ -98,12 +110,12 @@ export default function Dashboard() {
       setReferralMsg(result.message);
       setReferralCode("");
       await loadData();
-    } catch (err: any) {
-      setReferralMsg(err.message);
+    } catch (err: unknown) {
+      setReferralMsg(err instanceof Error ? err.message : "Failed to apply referral");
     }
   };
 
-  if (!user) return null;
+  if (authLoading || !user) return null;
 
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8">
@@ -196,7 +208,7 @@ export default function Dashboard() {
                     <div className="flex items-center gap-2 mb-2">
                       <Key size={16} className="text-green-400" />
                       <span className="text-sm font-medium text-green-400">
-                        Key created! Copy it now — it won't be shown again.
+                        Key created! Copy it now — it won&apos;t be shown again.
                       </span>
                     </div>
                     <div className="flex items-center gap-2">
@@ -218,7 +230,7 @@ export default function Dashboard() {
               <div className="card">
                 <h2 className="font-semibold mb-3">
                   Your Keys ({keys.length}
-                  {subscription ? ` / ${subscription.max_keys === -1 ? "∞" : subscription.max_keys}` : ""})
+                  {subscription ? ` / ${subscription.max_keys === -1 ? "\u221E" : subscription.max_keys}` : ""})
                 </h2>
                 <KeyTable keys={keys} onDelete={handleDeleteKey} />
               </div>
@@ -272,16 +284,22 @@ export default function Dashboard() {
               )}
 
               <h2 className="font-semibold mb-4">Upgrade Plan</h2>
-              <div className="grid md:grid-cols-3 gap-6">
+              <PricingToggle value={billingPeriod} onChange={setBillingPeriod} />
+              <div className="grid md:grid-cols-3 gap-6 mt-6">
                 {TIERS.map((tier) => (
                   <PricingCard
                     key={tier.id}
-                    {...tier}
+                    tier={tier}
+                    billingPeriod={billingPeriod}
                     currentTier={subscription?.tier}
                     onSelect={() => {
-                      if (tier.id !== "free") {
-                        redirectToCheckout(tier.id);
+                      if (tier.id === "free") {
+                        // Free tier — no checkout needed
+                        return;
                       }
+                      redirectToCheckout(tier.id, billingPeriod).catch((err) =>
+                        setError(err instanceof Error ? err.message : "Failed to start checkout")
+                      );
                     }}
                   />
                 ))}

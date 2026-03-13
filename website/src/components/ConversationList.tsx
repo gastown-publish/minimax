@@ -1,3 +1,5 @@
+"use client";
+
 import { MessageSquare, Plus, Trash2 } from "lucide-react";
 
 export interface Conversation {

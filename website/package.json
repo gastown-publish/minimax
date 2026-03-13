@@ -1,33 +1,31 @@
 {
   "name": "minimax-website",
   "private": true,
-  "version": "1.0.0",
-  "type": "module",
+  "version": "2.0.0",
   "scripts": {
-    "dev": "vite",
-    "build": "tsc -b && vite build",
-    "preview": "vite preview"
+    "dev": "next dev --port 3000",
+    "build": "next build",
+    "start": "next start"
   },
   "dependencies": {
     "@aws-sdk/client-cognito-identity-provider": "^3.1004.0",
     "@stripe/stripe-js": "^8.9.0",
-    "@tailwindcss/postcss": "^4.2.1",
     "highlight.js": "^11.11.1",
     "lucide-react": "^0.577.0",
-    "react": "^19.2.4",
-    "react-dom": "^19.2.4",
+    "next": "^14.2.29",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
     "react-markdown": "^10.1.0",
-    "react-router-dom": "^7.13.1",
     "remark-gfm": "^4.0.1"
   },
   "devDependencies": {
-    "@types/react": "^19.2.14",
-    "@types/react-dom": "^19.2.3",
-    "@vitejs/plugin-react": "^5.1.4",
+    "@types/node": "^22.15.0",
+    "@types/react": "^18.3.18",
+    "@types/react-dom": "^18.3.5",
     "autoprefixer": "^10.4.27",
+    "playwright": "^1.58.2",
     "postcss": "^8.5.8",
-    "tailwindcss": "^4.2.1",
-    "typescript": "^5.9.3",
-    "vite": "^7.3.1"
+    "tailwindcss": "^3.4.17",
+    "typescript": "^5.9.3"
   }
 }

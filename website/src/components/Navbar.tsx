@@ -1,26 +1,30 @@
-import { Link, useLocation, useNavigate } from "react-router-dom";
-import { getStoredUser, signOut } from "../auth";
+"use client";
+
+import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
+import { useAuth } from "@/components/AuthProvider";
 import { Menu, X, LogOut } from "lucide-react";
 import { useState } from "react";
 
 export default function Navbar() {
-  const location = useLocation();
-  const navigate = useNavigate();
-  const user = getStoredUser();
+  const pathname = usePathname();
+  const router = useRouter();
+  const { user, logout } = useAuth();
   const [mobileOpen, setMobileOpen] = useState(false);
 
   const handleSignOut = async () => {
-    await signOut();
-    navigate("/");
+    await logout();
+    router.push("/");
   };
 
   const links = [
-    { to: "/", label: "Home" },
-    { to: "/docs", label: "Docs" },
+    { href: "/", label: "Home" },
+    { href: "/docs", label: "Docs" },
     ...(user
       ? [
-          { to: "/dashboard", label: "Dashboard" },
-          { to: "/chat", label: "Chat" },
+          { href: "/dashboard", label: "Dashboard" },
+          { href: "/tools", label: "Tools" },
+          { href: "/chat", label: "Chat" },
         ]
       : []),
   ];
@@ -29,7 +33,7 @@ export default function Navbar() {
     <nav className="border-b border-[var(--border)] bg-[var(--bg-primary)]/80 backdrop-blur-sm sticky top-0 z-50">
       <div className="max-w-6xl mx-auto px-4 sm:px-6">
         <div className="flex items-center justify-between h-14">
-          <Link to="/" className="flex items-center gap-2 font-bold text-lg">
+          <Link href="/" className="flex items-center gap-2 font-bold text-lg">
             <span className="text-sky-400">M</span>
             <span>MiniMax-M2.5</span>
           </Link>
@@ -38,10 +42,10 @@ export default function Navbar() {
           <div className="hidden md:flex items-center gap-6">
             {links.map((link) => (
               <Link
-                key={link.to}
-                to={link.to}
+                key={link.href}
+                href={link.href}
                 className={`text-sm transition-colors ${
-                  location.pathname === link.to
+                  pathname === link.href
                     ? "text-sky-400"
                     : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
                 }`}
@@ -63,7 +67,7 @@ export default function Navbar() {
                 </button>
               </div>
             ) : (
-              <Link to="/login" className="btn-primary text-sm">
+              <Link href="/login" className="btn-primary text-sm">
                 Sign In
               </Link>
             )}
@@ -85,11 +89,11 @@ export default function Navbar() {
           <div className="px-4 py-3 space-y-2">
             {links.map((link) => (
               <Link
-                key={link.to}
-                to={link.to}
+                key={link.href}
+                href={link.href}
                 onClick={() => setMobileOpen(false)}
                 className={`block py-2 text-sm ${
-                  location.pathname === link.to
+                  pathname === link.href
                     ? "text-sky-400"
                     : "text-[var(--text-secondary)]"
                 }`}
@@ -106,7 +110,7 @@ export default function Navbar() {
               </button>
             ) : (
               <Link
-                to="/login"
+                href="/login"
                 onClick={() => setMobileOpen(false)}
                 className="block py-2 text-sm text-sky-400"
               >

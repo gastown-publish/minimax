@@ -7,50 +7,79 @@ LOG="/tmp/vllm-minimax.log"
 PID_FILE="/tmp/vllm-minimax.pid"
 PORT=8080
 
-# Clear any stale CUDA compat paths (driver 590+ provides native support)
+# ── GPU Configuration ───────────────────────────────────────────────
+# Default: 4 GPUs (TP4 + EP). Pass "8" to use all 8 GPUs (TP8 + EP).
+NUM_GPUS="${1:-4}"
+
+if [ "$NUM_GPUS" = "8" ]; then
+    TP_SIZE=8
+    MAX_SEQS=16
+    unset CUDA_VISIBLE_DEVICES
+    GPU_LABEL="8x H100 (TP=8 + EP)"
+elif [ "$NUM_GPUS" = "4" ]; then
+    TP_SIZE=4
+    MAX_SEQS=16
+    export CUDA_VISIBLE_DEVICES=0,1,2,3
+    GPU_LABEL="4x H100 (TP=4 + EP) — GPUs 0-3, GPUs 4-7 free"
+else
+    echo "ERROR: Only 4 or 8 GPUs supported (KV heads=8, TP must divide evenly)"
+    exit 1
+fi
+
+# ── Environment ─────────────────────────────────────────────────────
+# Clear stale CUDA compat paths (driver 590+ provides native support)
 unset LD_PRELOAD
 export LD_LIBRARY_PATH=""
 
-# Use CUDA 12.8 toolkit (system default nvcc is 12.0 which breaks FP8 block scaling in flashinfer)
+# CUDA 12.8 toolkit (system nvcc 12.0 breaks FP8 block scaling in flashinfer)
 export CUDA_HOME=/usr/local/cuda-12.8
 
-# Check venv
+# Disable custom all-reduce (CUDA IPC fails in LXC container)
+export VLLM_DISABLE_CUSTOM_ALL_REDUCE=1
+
+# GPU-accelerated safetensors loading
+export SAFETENSORS_FAST_GPU=1
+
+# ── Performance Optimizations ───────────────────────────────────────
+# DeepGEMM is faster for linear layers but SLOWER for MoE expert grouped GEMM.
+# Disabling it for MoE uses Cutlass BlockScaled GroupedGemm instead: +57% throughput on H100.
+# See: https://github.com/vllm-project/recipes/pull/120
+export VLLM_MOE_USE_DEEP_GEMM=0
+
+# ── Checks ──────────────────────────────────────────────────────────
 if [ ! -f "$VENV/bin/vllm" ]; then
     echo "ERROR: vLLM not found. Run: $VENV/bin/pip install vllm"
     exit 1
 fi
 
-# Check model
 if [ ! -f "$MODEL/config.json" ]; then
     echo "ERROR: Model not found at $MODEL"
     echo "Download it: ./scripts/download-model.sh"
     exit 1
 fi
 
-# Check port
 if ss -tlnp | grep -q ":${PORT} "; then
     echo "ERROR: Port $PORT is already in use"
     ss -tlnp | grep ":${PORT} "
     exit 1
 fi
 
+# ── Launch ──────────────────────────────────────────────────────────
 echo "Starting vLLM server on port $PORT..."
 echo "Model: MiniMax-M2.5 (FP8, ~230 GB)"
-echo "Log: $LOG"
-echo "GPUs: 8x H100 (tensor parallel + expert parallel)"
-
-# Disable custom all-reduce (CUDA IPC fails in LXC container)
-export VLLM_DISABLE_CUSTOM_ALL_REDUCE=1
-export SAFETENSORS_FAST_GPU=1
+echo "GPUs:  $GPU_LABEL"
+echo "Config: TP=$TP_SIZE, max-seqs=$MAX_SEQS, ctx=128K, prefix-cache=on, CUDA-graphs=PIECEWISE"
+echo "Optimizations: VLLM_MOE_USE_DEEP_GEMM=0"
+echo "Log:   $LOG"
 
 nohup "$VENV/bin/vllm" serve "$MODEL" \
     --host 0.0.0.0 \
     --port "$PORT" \
-    --tensor-parallel-size 8 \
+    --tensor-parallel-size "$TP_SIZE" \
     --enable-expert-parallel \
     --trust-remote-code \
     --gpu-memory-utilization 0.95 \
-    --max-num-seqs 16 \
+    --max-num-seqs "$MAX_SEQS" \
     --max-model-len 131072 \
     --enable-prefix-caching \
     --enable-chunked-prefill \
@@ -65,7 +94,7 @@ PID=$!
 echo "$PID" > "$PID_FILE"
 echo "Server PID: $PID"
 
-echo "Waiting for model to load (FP8 loads faster than INT4, ~10-20 minutes)..."
+echo "Waiting for model to load (~10-20 minutes for FP8)..."
 for i in $(seq 1 480); do
     sleep 5
     if ! kill -0 "$PID" 2>/dev/null; then

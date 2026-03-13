@@ -1,3 +1,5 @@
+"use client";
+
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { useEffect } from "react";
@@ -69,7 +71,9 @@ export default function MarkdownRenderer({ content }: MarkdownRendererProps) {
             );
           },
         }}
-      />
+      >
+        {content}
+      </ReactMarkdown>
     </div>
   );
 }

@@ -16,9 +16,12 @@ WEBHOOK_SECRET = os.environ["STRIPE_WEBHOOK_SECRET"]
 dynamodb = boto3.resource("dynamodb", region_name="us-east-1")
 users_table = dynamodb.Table("minimax-users")
 
+# Map all price IDs (monthly + yearly) to tiers
 TIER_MAP = {
     os.environ.get("STRIPE_PRICE_PRO", ""): "pro",
+    os.environ.get("STRIPE_PRICE_PRO_YEARLY", ""): "pro",
     os.environ.get("STRIPE_PRICE_ENTERPRISE", ""): "enterprise",
+    os.environ.get("STRIPE_PRICE_ENTERPRISE_YEARLY", ""): "enterprise",
 }
 
 
