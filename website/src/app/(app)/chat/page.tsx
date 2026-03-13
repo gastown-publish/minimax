@@ -18,7 +18,7 @@ const SEARCH_URL =
 
 const STORAGE_KEY = "minimax_conversations";
 const SETTINGS_KEY = "minimax_chat_settings";
-const MAX_TOOL_ITERATIONS = 3;
+const MAX_TOOL_ITERATIONS = 5;
 
 /** Strip minimax tool-call XML from content and return clean text */
 function stripToolCalls(text: string): string {
@@ -507,12 +507,16 @@ export default function ChatPage() {
       }
 
       // If we exhausted iterations and content is empty, do one final stream without tools
-      // to force the model to generate a text response
+      // to force the model to generate a text response using what it already gathered
       if (!finalContent.trim()) {
+        apiMessages.push({
+          role: "system" as const,
+          content: "You have already gathered search results. Do NOT attempt to search again. Answer the user's question now using the information you already have.",
+        });
         const result = await streamCompletion(
           apiMessages,
           apiKey,
-          { ...settings, model: settings.model },
+          settings,
           controller.signal,
           (displayContent, displayReasoning) => {
             setMessages((prev) => {
