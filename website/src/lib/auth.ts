@@ -24,6 +24,9 @@ const STORAGE_KEY = "minimax_auth";
 
 function saveTokens(user: AuthUser): void {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(user));
+  // Set cross-subdomain cookie so app.minimax.villamarket.ai can read auth
+  const encoded = encodeURIComponent(JSON.stringify({ email: user.email, sub: user.sub, accessToken: user.accessToken, idToken: user.idToken }));
+  document.cookie = `minimax_auth=${encoded}; domain=.villamarket.ai; path=/; max-age=86400; secure; samesite=lax`;
 }
 
 export function getStoredUser(): AuthUser | null {
@@ -39,6 +42,7 @@ export function getStoredUser(): AuthUser | null {
 
 export function clearAuth(): void {
   localStorage.removeItem(STORAGE_KEY);
+  document.cookie = "minimax_auth=; domain=.villamarket.ai; path=/; max-age=0; secure; samesite=lax";
 }
 
 export function getAccessToken(): string | null {

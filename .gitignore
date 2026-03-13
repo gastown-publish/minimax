@@ -11,15 +11,12 @@ src/*.egg-info/
 
 # Logs
 *.log
-/tmp/
 
 # Secrets — never commit actual keys
 litellm-config.yaml
 
 # Node
 node_modules/
-website/dist/
-website/node_modules/
 website/.next/
 website/out/
 
@@ -27,6 +24,14 @@ website/out/
 .env
 .env.local
 .env.*.local
+website/.env.local
+
+# iOS
+ios/MiniMaxApp.xcodeproj/
+ios/*.xcworkspace/
+ios/DerivedData/
+ios/.build/
+ios/Packages/
 
 # IDE
 .vscode/

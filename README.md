@@ -1,8 +1,71 @@
 # MiniMax-M2.5
 
-Self-hosted [MiniMax-M2.5](https://huggingface.co/MiniMaxAI/MiniMax-M2.5) inference server — 128K context, function calling, reasoning, optimized for coding.
+Self-hosted [MiniMax-M2.5](https://huggingface.co/MiniMaxAI/MiniMax-M2.5) inference platform running on 8x NVIDIA H100 80GB GPUs.
 
-Running on 8x NVIDIA H100 80GB with vLLM (tensor parallel + expert parallel), exposed as an **OpenAI-compatible API**.
+**Website**: [minimax.villamarket.ai](https://minimax.villamarket.ai)
+**Chat**: [app.minimax.villamarket.ai](https://app.minimax.villamarket.ai)
+
+| Component | Description |
+|-----------|-------------|
+| **vLLM** (port 8080) | Model inference server (TP8 + expert parallel) |
+| **LiteLLM** (port 4000) | API proxy with key management and cost tracking |
+| **Website** | Landing page, API docs, dashboard, auth (Next.js + S3 + CloudFront) |
+| **DeerFlow** | AI agent chat UI at `app.minimax.villamarket.ai` (Next.js + LangGraph) |
+| **CLI** | Ollama-style CLI for managing the server |
+| **TUI** | Terminal UI for API key management |
+| **iOS App** | Native Swift app (in development) |
+
+---
+
+## Project Structure
+
+```
+.
+├── scripts/                  # Server management scripts
+│   ├── start.sh              # Start vLLM server
+│   ├── start-all.sh          # Start vLLM + LiteLLM
+│   ├── stop.sh               # Stop vLLM
+│   ├── stop-all.sh           # Stop everything
+│   ├── health.sh             # Health check
+│   ├── test.sh               # Inference test
+│   ├── test-tools.sh         # Tool calling test
+│   └── download-model.sh     # Download model from HuggingFace
+├── src/minimax_cli/          # CLI source code
+│   ├── main.py               # Entry point
+│   ├── api.py                # API client
+│   ├── config.py             # Configuration
+│   ├── constants.py          # Constants
+│   └── commands/             # CLI subcommands
+├── tui/                      # Admin TUI (Textual)
+│   └── app.py                # Key management interface
+├── website/                  # minimax.villamarket.ai
+│   ├── src/                  # Next.js source
+│   │   ├── app/              # App Router pages
+│   │   ├── components/       # React components
+│   │   └── lib/              # Utilities + auth
+│   ├── lambda/               # AWS Lambda functions
+│   │   ├── keys.py           # API key generation
+│   │   ├── checkout.py       # Stripe checkout
+│   │   ├── stripe_webhook.py # Stripe webhooks
+│   │   ├── promo.py          # Promo codes
+│   │   └── referral.py       # Referral system
+│   ├── cf-function.js        # CloudFront Function
+│   └── deploy.sh             # Build + deploy to S3/CloudFront
+├── ios/                      # iOS app (Swift)
+│   ├── MiniMaxApp/           # App source
+│   │   ├── App/              # Entry point + state
+│   │   ├── Core/API/         # SSE streaming + LangGraph client
+│   │   ├── Core/Models/      # Data models
+│   │   └── Features/         # Chat, Threads, Settings views
+│   └── Package.swift         # Swift Package manifest
+├── litellm-config.example.yaml
+├── admin                     # Symlink to TUI launcher
+├── pyproject.toml            # Python package config
+├── CLAUDE.md                 # AI agent instructions
+└── README.md                 # This file
+```
+
+---
 
 ## CLI
 
@@ -31,8 +94,6 @@ minimax auth status         Check auth status
 minimax auth logout         Remove stored key
 minimax setup claude        Configure Claude Code
 minimax setup codex         Configure Codex CLI
-minimax setup openclaw      Configure OpenClaw
-minimax setup opencode      Configure OpenCode
 minimax setup aider         Configure Aider
 minimax setup continue      Configure Continue (VS Code/JetBrains)
 minimax setup cline         Print Cline setup instructions
@@ -57,6 +118,8 @@ minimax setup claude
 
 ---
 
+## Benchmarks
+
 | Benchmark | Score |
 |-----------|-------|
 | SWE-Bench Verified | **80.2%** |
@@ -72,18 +135,6 @@ All requests require an API key:
 
 ```
 Authorization: Bearer YOUR_API_KEY
-```
-
-## Quick Start
-
-```bash
-curl https://gpu-workspace.taile8dc37.ts.net/minimax/v1/chat/completions \
-  -H "Authorization: Bearer YOUR_API_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "model": "minimax-m2.5",
-    "messages": [{"role": "user", "content": "Hello!"}]
-  }'
 ```
 
 ## Models
@@ -102,15 +153,23 @@ curl https://gpu-workspace.taile8dc37.ts.net/minimax/v1/chat/completions \
 
 ---
 
+## Quick Start
+
+```bash
+curl https://gpu-workspace.taile8dc37.ts.net/minimax/v1/chat/completions \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "minimax-m2.5",
+    "messages": [{"role": "user", "content": "Hello!"}]
+  }'
+```
+
+---
+
 ## Integrations
 
 ### Claude Code
-
-Add as a custom API provider in your Claude Code settings:
-
-```bash
-# In your project's .claude/settings.json or ~/.claude/settings.json
-```
 
 ```json
 {
@@ -121,85 +180,12 @@ Add as a custom API provider in your Claude Code settings:
 }
 ```
 
-Or set via environment variables:
-
-```bash
-export ANTHROPIC_BASE_URL="https://gpu-workspace.taile8dc37.ts.net/minimax/v1"
-export ANTHROPIC_API_KEY="YOUR_API_KEY"
-claude --model minimax-m2.5
-```
-
-### OpenClaw
-
-Add to your `openclaw.json` in `models.providers`:
-
-```json
-{
-  "id": "minimax",
-  "name": "MiniMax-M2.5",
-  "api": "openai-completions",
-  "baseUrl": "https://gpu-workspace.taile8dc37.ts.net/minimax/v1",
-  "apiKey": "YOUR_API_KEY",
-  "timeout": 600000,
-  "models": [
-    {
-      "id": "minimax-m2.5",
-      "name": "MiniMax-M2.5 (128K)",
-      "contextWindow": 131072,
-      "maxTokens": 131072
-    }
-  ]
-}
-```
-
-Then set as default:
-
-```bash
-openclaw config set model "minimax/minimax-m2.5"
-```
-
 ### Codex (OpenAI CLI)
-
-Codex supports any OpenAI-compatible endpoint:
 
 ```bash
 export OPENAI_BASE_URL="https://gpu-workspace.taile8dc37.ts.net/minimax/v1"
 export OPENAI_API_KEY="YOUR_API_KEY"
-
-codex --model minimax-m2.5 "Write a Python function to merge two sorted lists"
-```
-
-Or configure in `~/.codex/config.yaml`:
-
-```yaml
-provider: openai
-model: minimax-m2.5
-base_url: https://gpu-workspace.taile8dc37.ts.net/minimax/v1
-api_key: YOUR_API_KEY
-```
-
-### OpenCode
-
-Configure in `~/.opencode/config.json`:
-
-```json
-{
-  "provider": {
-    "name": "openai-compatible",
-    "apiBase": "https://gpu-workspace.taile8dc37.ts.net/minimax/v1",
-    "apiKey": "YOUR_API_KEY",
-    "model": "minimax-m2.5"
-  }
-}
-```
-
-Or use environment variables:
-
-```bash
-export OPENAI_API_BASE="https://gpu-workspace.taile8dc37.ts.net/minimax/v1"
-export OPENAI_API_KEY="YOUR_API_KEY"
-
-opencode --model minimax-m2.5
+codex --model minimax-m2.5 "Write a Python function"
 ```
 
 ### Aider
@@ -210,63 +196,30 @@ aider --openai-api-base https://gpu-workspace.taile8dc37.ts.net/minimax/v1 \
       --model openai/minimax-m2.5
 ```
 
-Or set in `~/.aider.conf.yml`:
-
-```yaml
-openai-api-base: https://gpu-workspace.taile8dc37.ts.net/minimax/v1
-openai-api-key: YOUR_API_KEY
-model: openai/minimax-m2.5
-```
-
 ### Continue (VS Code / JetBrains)
 
 Add to `~/.continue/config.json`:
 
 ```json
 {
-  "models": [
-    {
-      "title": "MiniMax-M2.5",
-      "provider": "openai",
-      "model": "minimax-m2.5",
-      "apiBase": "https://gpu-workspace.taile8dc37.ts.net/minimax/v1",
-      "apiKey": "YOUR_API_KEY"
-    }
-  ]
+  "models": [{
+    "title": "MiniMax-M2.5",
+    "provider": "openai",
+    "model": "minimax-m2.5",
+    "apiBase": "https://gpu-workspace.taile8dc37.ts.net/minimax/v1",
+    "apiKey": "YOUR_API_KEY"
+  }]
 }
 ```
 
 ### Cline (VS Code)
 
-In Cline settings:
-1. Set **API Provider** to "OpenAI Compatible"
-2. **Base URL**: `https://gpu-workspace.taile8dc37.ts.net/minimax/v1`
-3. **API Key**: `YOUR_API_KEY`
-4. **Model ID**: `minimax-m2.5`
-
-### Open WebUI
-
-In Settings → Connections → OpenAI:
-- **URL**: `https://gpu-workspace.taile8dc37.ts.net/minimax/v1`
-- **API Key**: `YOUR_API_KEY`
-
-### LibreChat
-
-Add to `librechat.yaml`:
-
-```yaml
-endpoints:
-  custom:
-    - name: "MiniMax-M2.5"
-      apiKey: "YOUR_API_KEY"
-      baseURL: "https://gpu-workspace.taile8dc37.ts.net/minimax/v1"
-      models:
-        default: ["minimax-m2.5"]
-```
+1. API Provider: "OpenAI Compatible"
+2. Base URL: `https://gpu-workspace.taile8dc37.ts.net/minimax/v1`
+3. API Key: `YOUR_API_KEY`
+4. Model ID: `minimax-m2.5`
 
 ### Any OpenAI-compatible client
-
-This API is fully OpenAI-compatible. Use these settings in any client:
 
 | Setting | Value |
 |---------|-------|
@@ -278,7 +231,7 @@ This API is fully OpenAI-compatible. Use these settings in any client:
 
 ## Code Examples
 
-### Python (openai SDK)
+### Python
 
 ```python
 from openai import OpenAI
@@ -290,14 +243,8 @@ client = OpenAI(
 
 response = client.chat.completions.create(
     model="minimax-m2.5",
-    messages=[
-        {"role": "system", "content": "You are a senior software engineer."},
-        {"role": "user", "content": "Write a Python function to merge two sorted lists."},
-    ],
-    max_tokens=1024,
-    temperature=0.6,
+    messages=[{"role": "user", "content": "Hello!"}],
 )
-
 print(response.choices[0].message.content)
 ```
 
@@ -306,51 +253,12 @@ print(response.choices[0].message.content)
 ```python
 stream = client.chat.completions.create(
     model="minimax-m2.5",
-    messages=[{"role": "user", "content": "Write a Redis cache decorator in Python."}],
-    max_tokens=2048,
+    messages=[{"role": "user", "content": "Write a Redis cache decorator."}],
     stream=True,
 )
-
 for chunk in stream:
     if chunk.choices[0].delta.content:
         print(chunk.choices[0].delta.content, end="", flush=True)
-```
-
-### Python (function calling)
-
-```python
-import json
-
-tools = [
-    {
-        "type": "function",
-        "function": {
-            "name": "execute_sql",
-            "description": "Execute a SQL query against the database",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "query": {"type": "string", "description": "The SQL query"},
-                    "database": {"type": "string", "description": "Database name"},
-                },
-                "required": ["query"],
-            },
-        },
-    }
-]
-
-response = client.chat.completions.create(
-    model="minimax-m2.5",
-    messages=[{"role": "user", "content": "Find all users who signed up in the last 7 days"}],
-    tools=tools,
-    tool_choice="auto",
-)
-
-message = response.choices[0].message
-if message.tool_calls:
-    for call in message.tool_calls:
-        print(f"Function: {call.function.name}")
-        print(f"Arguments: {call.function.arguments}")
 ```
 
 ### Node.js / TypeScript
@@ -365,28 +273,9 @@ const client = new OpenAI({
 
 const response = await client.chat.completions.create({
   model: "minimax-m2.5",
-  messages: [
-    { role: "system", content: "You are a helpful coding assistant." },
-    { role: "user", content: "Write a TypeScript function to debounce async functions." },
-  ],
-  max_tokens: 1024,
+  messages: [{ role: "user", content: "Hello!" }],
 });
-
 console.log(response.choices[0].message.content);
-```
-
-### cURL
-
-```bash
-curl https://gpu-workspace.taile8dc37.ts.net/minimax/v1/chat/completions \
-  -H "Authorization: Bearer YOUR_API_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "model": "minimax-m2.5",
-    "messages": [{"role": "user", "content": "Hello!"}],
-    "max_tokens": 1024,
-    "stream": true
-  }'
 ```
 
 ---
@@ -395,11 +284,7 @@ curl https://gpu-workspace.taile8dc37.ts.net/minimax/v1/chat/completions \
 
 ### POST /v1/chat/completions
 
-Standard OpenAI chat completions endpoint. Supports:
-- System, user, assistant, and tool messages
-- Streaming (`"stream": true`)
-- Function calling / tool use
-- Temperature, top_p, max_tokens, stop sequences
+Standard OpenAI chat completions endpoint. Supports streaming, function calling, temperature, top_p, max_tokens, stop sequences.
 
 ### GET /v1/models
 
@@ -407,42 +292,7 @@ List available models.
 
 ### GET /health/liveliness
 
-Health check — returns 200 when the server is ready.
-
----
-
-## Reasoning
-
-MiniMax-M2.5 includes chain-of-thought reasoning in `<think>` blocks:
-
-```
-<think>
-The user wants a binary search implementation...
-Let me consider edge cases...
-</think>
-
-Here's the implementation:
-...
-```
-
-The API separates reasoning into the `reasoning_content` field when available. You can also strip `<think>...</think>` blocks from the `content` field.
-
----
-
-## Rate Limits
-
-- Max concurrent requests: 16
-- Max context length: 131,072 tokens (128K)
-- Request timeout: 600 seconds
-
-## Capabilities
-
-- **Code generation**: Python, TypeScript, Rust, Go, Java, C++, etc.
-- **Code review**: Bug detection, security analysis, refactoring suggestions
-- **Function calling**: Native tool use with structured JSON arguments
-- **Reasoning**: Step-by-step problem solving with visible thought process
-- **Long context**: Process entire codebases, long documents, multi-file diffs
-- **Multi-file editing**: 51.3% on Multi-SWE-Bench
+Health check — returns 200 when ready.
 
 ---
 
@@ -483,18 +333,28 @@ vllm serve /path/to/MiniMax-M2.5-HF \
 
 ### API Key Management
 
-The admin TUI manages API keys via [LiteLLM](https://github.com/BerriAI/litellm):
-
 ```bash
-minimax tui
+minimax tui   # or ./admin
 ```
 
 Keys: `g` generate | `v` view | `e` email key | `b` set budget | `d` delete | `r` refresh | `q` quit
 
-Generated keys are persisted locally in `~/.config/minimax/keys.json` so they can be viewed anytime (not just at creation). When generating a key, you can provide an email to automatically send the key to the user via SES.
-
 ---
+
+## Infrastructure
+
+| Service | URL | Hosting |
+|---------|-----|---------|
+| Website | minimax.villamarket.ai | S3 + CloudFront |
+| Chat UI | app.minimax.villamarket.ai | CloudFront -> Tailscale Funnel -> DeerFlow |
+| API | gpu-workspace.taile8dc37.ts.net/minimax/v1 | Tailscale Funnel -> LiteLLM |
+
+## Rate Limits
+
+- Max concurrent requests: 16
+- Max context length: 131,072 tokens (128K)
+- Request timeout: 600 seconds
 
 ## Support
 
-For API key requests or issues, contact the server admin.
+Contact: [support@villamarket.ai](mailto:support@villamarket.ai)

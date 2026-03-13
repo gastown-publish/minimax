@@ -17,14 +17,14 @@ export default function Navbar() {
     router.push("/");
   };
 
-  const links = [
+  const links: { href: string; label: string; external?: boolean }[] = [
     { href: "/", label: "Home" },
     { href: "/docs", label: "Docs" },
     ...(user
       ? [
           { href: "/dashboard", label: "Dashboard" },
           { href: "/tools", label: "Tools" },
-          { href: "/chat", label: "Chat" },
+          { href: "https://app.minimax.villamarket.ai", label: "Chat", external: true },
         ]
       : []),
   ];
@@ -40,19 +40,31 @@ export default function Navbar() {
 
           {/* Desktop nav */}
           <div className="hidden md:flex items-center gap-6">
-            {links.map((link) => (
-              <Link
-                key={link.href}
-                href={link.href}
-                className={`text-sm transition-colors ${
-                  pathname === link.href
-                    ? "text-sky-400"
-                    : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
-                }`}
-              >
-                {link.label}
-              </Link>
-            ))}
+            {links.map((link) =>
+              link.external ? (
+                <a
+                  key={link.href}
+                  href={link.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-sm transition-colors text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+                >
+                  {link.label}
+                </a>
+              ) : (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  className={`text-sm transition-colors ${
+                    pathname === link.href
+                      ? "text-sky-400"
+                      : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+                  }`}
+                >
+                  {link.label}
+                </Link>
+              )
+            )}
             {user ? (
               <div className="flex items-center gap-3">
                 <span className="text-xs text-[var(--text-secondary)]">
@@ -87,20 +99,33 @@ export default function Navbar() {
       {mobileOpen && (
         <div className="md:hidden border-t border-[var(--border)] bg-[var(--bg-primary)]">
           <div className="px-4 py-3 space-y-2">
-            {links.map((link) => (
-              <Link
-                key={link.href}
-                href={link.href}
-                onClick={() => setMobileOpen(false)}
-                className={`block py-2 text-sm ${
-                  pathname === link.href
-                    ? "text-sky-400"
-                    : "text-[var(--text-secondary)]"
-                }`}
-              >
-                {link.label}
-              </Link>
-            ))}
+            {links.map((link) =>
+              link.external ? (
+                <a
+                  key={link.href}
+                  href={link.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={() => setMobileOpen(false)}
+                  className="block py-2 text-sm text-[var(--text-secondary)]"
+                >
+                  {link.label}
+                </a>
+              ) : (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  onClick={() => setMobileOpen(false)}
+                  className={`block py-2 text-sm ${
+                    pathname === link.href
+                      ? "text-sky-400"
+                      : "text-[var(--text-secondary)]"
+                  }`}
+                >
+                  {link.label}
+                </Link>
+              )
+            )}
             {user ? (
               <button
                 onClick={handleSignOut}

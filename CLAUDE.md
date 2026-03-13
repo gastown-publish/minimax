@@ -1,111 +1,116 @@
 # CLAUDE.md — AI Agent Instructions
 
-This repo manages a local MiniMax-M2.5 deployment on an 8x H100 80GB GPU server.
+This repo manages the MiniMax-M2.5 platform: inference server, website, chat UI, CLI, and iOS app.
 
-## What This Is
+## Architecture
 
-MiniMax-M2.5 served via vLLM with tensor parallel + expert parallel across 8 GPUs.
-The model ships as native FP8 weights (~230 GB), fitting comfortably with ~375 GB left for KV cache.
-This enables 128K context per request — ideal for coding workloads.
-
-The server exposes an OpenAI-compatible API on port 8080. LiteLLM (port 4000) handles API key management, cost tracking, and proxying.
+```
+                    ┌─────────────────────────────────────┐
+                    │  minimax.villamarket.ai (Website)    │
+                    │  S3 + CloudFront E2AFMAXJ9YXUTH     │
+                    └─────────────────────────────────────┘
+                    ┌─────────────────────────────────────┐
+                    │  app.minimax.villamarket.ai (Chat)   │
+                    │  CloudFront E7MNC26N70Y7Z            │
+                    │  → Tailscale Funnel :10000           │
+                    │  → DeerFlow (Docker)                 │
+                    └───────────┬─────────────────────────┘
+                                │
+    ┌───────────────────────────▼──────────────────────────┐
+    │               LiteLLM (port 4000)                    │
+    │  API key auth, cost tracking, request routing        │
+    └───────────────────────────┬──────────────────────────┘
+                                │
+    ┌───────────────────────────▼──────────────────────────┐
+    │               vLLM (port 8080)                       │
+    │  MiniMax-M2.5, TP8 + Expert Parallel, FP8            │
+    │  8x H100 80GB, 128K context                          │
+    └──────────────────────────────────────────────────────┘
+```
 
 ## Key Paths
 
-- **Model weights**: `/home/nic/data/models/MiniMax-M2.5-HF/` (~230 GB, 126 safetensors shards, FP8)
-- **vLLM venv**: `/home/nic/data/models/MiniMax-M2.5/.venv/` (Python 3.12, vLLM + LiteLLM)
-- **vLLM log**: `/tmp/vllm-minimax.log`
-- **LiteLLM log**: `/tmp/litellm-minimax.log`
-- **LiteLLM config**: `./litellm-config.yaml`
-- **TUI admin**: `./admin` (or `minimax-admin` if symlinked)
+| Path | Description |
+|------|-------------|
+| `scripts/` | Server start/stop/health/test scripts |
+| `src/minimax_cli/` | Ollama-style CLI (pip install -e .) |
+| `tui/` | Admin TUI for API key management |
+| `website/` | minimax.villamarket.ai (Next.js static export) |
+| `website/src/` | Website source (pages, components, auth) |
+| `website/lambda/` | AWS Lambda functions (keys, billing, promos) |
+| `ios/` | Native iOS app (Swift, SwiftUI) |
+| `litellm-config.yaml` | LiteLLM config (gitignored — has secrets) |
+| `litellm-config.example.yaml` | Example LiteLLM config (safe to commit) |
+| `admin` | Symlink to TUI launcher |
+
+### External Paths (not in repo)
+
+| Path | Description |
+|------|-------------|
+| `/home/nic/data/models/MiniMax-M2.5-HF/` | Model weights (~230 GB, FP8) |
+| `/home/nic/data/deerflow/` | DeerFlow source (separate repo) |
+| `.venv/` | Python venv (vLLM 0.17.0, LiteLLM 1.82.0) |
 
 ## Important Warnings
 
-- The model uses ~230 GB VRAM across 8 GPUs. With 128K context and KV cache, total usage can reach ~600 GB.
-- There is NO authentication on port 8080. LiteLLM (port 4000) handles API key auth.
-- CUDA only works because the LXC host was configured for GPU passthrough. If `cuInit()` returns error 802, the host admin needs to fix GPU passthrough again.
-- **CRITICAL**: Must set `LD_LIBRARY_PATH=""` before running vLLM. The cuda-compat path in `/etc/environment` breaks CUDA init. The start scripts handle this automatically.
-- **CRITICAL**: Must set `CUDA_HOME=/usr/local/cuda-12.8` — the system default nvcc is 12.0 (`nvidia-cuda-toolkit` package) which causes flashinfer to reject FP8 block scaling. CUDA 12.8+ is required.
-- **CRITICAL**: Must use `--enable-expert-parallel` — pure TP8 is not supported for MoE routing on this model.
+- **CRITICAL**: Must set `LD_LIBRARY_PATH=""` before running vLLM. cuda-compat in `/etc/environment` breaks CUDA init.
+- **CRITICAL**: Must set `CUDA_HOME=/usr/local/cuda-12.8` — system nvcc is 12.0, flashinfer FP8 needs 12.8+.
+- **CRITICAL**: Must use `--enable-expert-parallel` — pure TP8 not supported for MoE routing.
+- **CRITICAL**: Must use `VLLM_DISABLE_CUSTOM_ALL_REDUCE=1` — CUDA IPC fails in LXC container.
+- LiteLLM model `minimax-m2.5` must use `api_base: http://localhost:8080/v1` (direct vLLM), NOT CloudFront URLs.
+- There is NO auth on port 8080. LiteLLM (port 4000) handles API key auth.
 
 ## Common Tasks
 
-### Check if server is running
-```bash
-./scripts/health.sh
-```
+| Task | Command |
+|------|---------|
+| Start full stack | `./scripts/start-all.sh` |
+| Start vLLM only | `./scripts/start.sh` |
+| Stop everything | `./scripts/stop-all.sh` |
+| Health check | `./scripts/health.sh` |
+| Test inference | `./scripts/test.sh` |
+| Admin TUI | `./admin` |
+| Build + deploy website | `cd website && npm run build && ./deploy.sh` |
 
-### Start full stack (vLLM + LiteLLM)
-```bash
-./scripts/start-all.sh
-```
+## Website
 
-### Start vLLM only
-```bash
-./scripts/start.sh
-```
+- **Stack**: Next.js 14, React, Tailwind, static export to S3
+- **Auth**: AWS Cognito (email/password, Google, Apple)
+- **Payments**: Stripe subscriptions
+- **Pages**: `/` (landing), `/login`, `/dashboard`, `/chat`, `/docs`, `/tools`
+- **Deploy**: `cd website && ./deploy.sh` (builds + syncs to S3 + invalidates CloudFront)
 
-### Stop everything
-```bash
-./scripts/stop-all.sh
-```
+## DeerFlow (Chat UI)
 
-### Test inference
-```bash
-./scripts/test.sh
-```
+- **URL**: app.minimax.villamarket.ai
+- **Source**: `/home/nic/data/deerflow/` (separate repo, Docker containers)
+- **Backend**: LangGraph agents calling LiteLLM → vLLM
+- **Auth gate**: CloudFront Function redirects unauthenticated users to login
+- **Branding**: Customized as villamarket.ai / MiniMax-M2.5
 
-### Admin TUI
-```bash
-./admin
-```
+## iOS App
 
-### Download model
-```bash
-./scripts/download-model.sh
-```
+- **Path**: `ios/MiniMaxApp/`
+- **Stack**: Swift, SwiftUI, SwiftData
+- **API**: SSE streaming via LangGraph endpoints at app.minimax.villamarket.ai
+- **Status**: Scaffolded, not yet built
 
-## Server Parameters
+## AWS Infrastructure
 
-```
-vllm serve /home/nic/data/models/MiniMax-M2.5-HF
-    --tensor-parallel-size 8
-    --enable-expert-parallel         (required for MoE routing)
-    --gpu-memory-utilization 0.95
-    --max-model-len 131072           (128K context)
-    --max-num-seqs 16
-    --enable-prefix-caching          (reuse system prompt KV cache)
-    --enable-chunked-prefill
-    --enable-auto-tool-choice
-    --tool-call-parser minimax_m2    (function calling)
-    --reasoning-parser minimax_m2_append_think  (separates <think> blocks)
-    --compilation-config '{"cudagraph_mode": "PIECEWISE"}'
-```
+| Resource | ID / ARN |
+|----------|----------|
+| Website CloudFront | E2AFMAXJ9YXUTH |
+| Chat CloudFront | E7MNC26N70Y7Z |
+| Chat ACM Cert | arn:aws:acm:us-east-1:914499832220:certificate/1efa3355-... |
+| Route53 Zone | Z069245539VG1ZOH980UK |
+| Cognito Pool | us-east-1 (TBD) |
+| S3 Bucket | minimax-villamarket-website |
 
 ## Model Info
 
 - **Name**: MiniMax-M2.5
-- **Source**: MiniMaxAI/MiniMax-M2.5
-- **Precision**: FP8 (native)
-- **Size**: ~230 GB
+- **Precision**: FP8 (native, ~230 GB)
 - **Architecture**: MoE (Mixture of Experts)
 - **Context**: 128K tokens
-- **Benchmarks**: 80.2% SWE-Bench Verified, 51.3% Multi-SWE-Bench
-
-## Pricing (LiteLLM cost tracking)
-
-- Input: $0.30 / 1M tokens
-- Output: $1.20 / 1M tokens
-
-## Infrastructure
-
-- **Caddy** (port 8090): Reverse proxy to LiteLLM on 4000
-- **PostgreSQL**: localhost:5432, database `litellm`
-- **Tailscale**: Public endpoint via Funnel
-- **NVIDIA driver**: 590.48.01 required
-
-## Performance Baseline
-
-- FP8 loads faster than INT4 (~10-20 minutes vs 30-40)
-- Expert parallel enables full 128K context
-- Prefix caching significantly speeds up repeated system prompts
+- **Performance**: 80.2% SWE-Bench Verified, 51.3% Multi-SWE-Bench
+- **Pricing**: $0.30/M input, $1.20/M output

@@ -45,13 +45,13 @@ export default function LandingContent() {
           served on 8x H100 GPUs. OpenAI-compatible API.
         </p>
         <div className="flex flex-wrap items-center justify-center gap-4">
-          <Link
-            href={user ? "/chat" : "/login"}
+          <a
+            href={user ? "https://app.minimax.villamarket.ai/workspace/chats/new" : "/login?redirect=https://app.minimax.villamarket.ai/workspace/chats/new"}
             className="btn-primary inline-flex items-center gap-2 text-lg px-6 py-3"
           >
             {user ? "Open Chat" : "Get Started"}
             <ArrowRight size={18} />
-          </Link>
+          </a>
           <Link
             href="/docs"
             className="btn-secondary inline-flex items-center gap-2 text-lg px-6 py-3"

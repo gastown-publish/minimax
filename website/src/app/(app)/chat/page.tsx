@@ -9,7 +9,7 @@ import ChatInput from "@/components/ChatInput";
 import ConversationList, {
   type Conversation,
 } from "@/components/ConversationList";
-import { Settings, X, PanelLeftClose, PanelLeft } from "lucide-react";
+import { Settings, X, PanelLeftClose, PanelLeft, ArrowRight } from "lucide-react";
 
 const API_BASE =
   process.env.NEXT_PUBLIC_CHAT_API_BASE || "/v1";
@@ -600,7 +600,19 @@ export default function ChatPage() {
   if (loading || !user) return null;
 
   return (
-    <div className="flex h-[calc(100vh-56px)]">
+    <div className="flex flex-col h-[calc(100vh-56px)]">
+      {/* Migration banner */}
+      <a
+        href="https://app.minimax.villamarket.ai"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-sky-500/10 to-purple-500/10 border-b border-sky-500/20 text-sm text-sky-400 hover:text-sky-300 transition-colors"
+      >
+        We&apos;ve upgraded to DeerFlow AI Agent — try it now
+        <ArrowRight size={16} />
+      </a>
+
+      <div className="flex flex-1 min-h-0">
       {/* Sidebar */}
       {showSidebar && (
         <ConversationList
@@ -776,6 +788,7 @@ export default function ChatPage() {
           isStreaming={isStreaming}
           disabled={!apiKey || keyLoading}
         />
+      </div>
       </div>
     </div>
   );

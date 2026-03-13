@@ -34,12 +34,18 @@ function LoginContent() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
+  const redirectTo = searchParams.get("redirect");
+
   // Redirect if already logged in
   useEffect(() => {
     if (user) {
-      router.push("/dashboard");
+      if (redirectTo) {
+        window.location.href = redirectTo;
+      } else {
+        router.push("/dashboard");
+      }
     }
-  }, [user, router]);
+  }, [user, router, redirectTo]);
 
   // Handle OAuth callback
   useEffect(() => {
@@ -49,7 +55,11 @@ function LoginContent() {
       exchangeCode(authCode)
         .then(() => {
           refresh();
-          router.push("/dashboard");
+          if (redirectTo) {
+            window.location.href = redirectTo;
+          } else {
+            router.push("/dashboard");
+          }
         })
         .catch((e) => {
           setError(e.message);
@@ -63,6 +73,15 @@ function LoginContent() {
     setError("");
     setLoading(true);
 
+    const afterLogin = () => {
+      refresh();
+      if (redirectTo) {
+        window.location.href = redirectTo;
+      } else {
+        router.push("/dashboard");
+      }
+    };
+
     try {
       if (mode === "signup") {
         await signUp(email, password);
@@ -70,12 +89,10 @@ function LoginContent() {
       } else if (mode === "confirm") {
         await confirmSignUp(email, code);
         await signIn(email, password);
-        refresh();
-        router.push("/dashboard");
+        afterLogin();
       } else {
         await signIn(email, password);
-        refresh();
-        router.push("/dashboard");
+        afterLogin();
       }
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Authentication failed");

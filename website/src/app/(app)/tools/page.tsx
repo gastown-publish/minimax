@@ -1,6 +1,6 @@
 "use client";
 
-import { Blocks, Search, FlaskConical, ExternalLink } from "lucide-react";
+import { Blocks, Search, FlaskConical, Bot, ExternalLink } from "lucide-react";
 
 const TOOLS = [
   {
@@ -31,6 +31,16 @@ const TOOLS = [
     color: "text-amber-400",
     bg: "bg-amber-500/10",
     border: "border-amber-500/20",
+  },
+  {
+    name: "OpenClaw",
+    description:
+      "Autonomous AI agent — browse the web, run commands, manage files, and integrate with messaging platforms",
+    url: "https://gpu-workspace.taile8dc37.ts.net:18790/?token=1462622eeca9b1fc9a266e3d181ccb8abd54f6042e60dc6fbe6b77d54e382442",
+    icon: Bot,
+    color: "text-purple-400",
+    bg: "bg-purple-500/10",
+    border: "border-purple-500/20",
   },
 ];
 
