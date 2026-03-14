@@ -4,10 +4,17 @@ import Foundation
 actor LangGraphAPI {
     let baseURL: URL
     private let session: URLSession
+    var authToken: String?
 
-    init(baseURL: URL, session: URLSession = .shared) {
+    init(baseURL: URL, session: URLSession = .shared, authToken: String? = nil) {
         self.baseURL = baseURL
         self.session = session
+        self.authToken = authToken
+    }
+
+    private func addAuthCookie(to request: inout URLRequest) {
+        guard let token = authToken, let host = baseURL.host else { return }
+        request.setValue("minimax_auth=\(token)", forHTTPHeaderField: "Cookie")
     }
 
     // MARK: - Threads
@@ -18,6 +25,7 @@ actor LangGraphAPI {
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.httpBody = try JSONEncoder().encode(["metadata": [String: String]()])
+        addAuthCookie(to: &request)
 
         let (data, response) = try await session.data(for: request)
         try validateResponse(response)
@@ -26,10 +34,11 @@ actor LangGraphAPI {
 
     // MARK: - Streaming Runs
 
-    func streamRun(
+    nonisolated func streamRun(
         threadId: String,
         message: String,
-        modelName: String
+        modelName: String,
+        authToken: String? = nil
     ) -> AsyncThrowingStream<SSEParser.SSEEvent, Error> {
         AsyncThrowingStream { continuation in
             Task {
@@ -39,6 +48,9 @@ actor LangGraphAPI {
                     request.httpMethod = "POST"
                     request.setValue("application/json", forHTTPHeaderField: "Content-Type")
                     request.timeoutInterval = 300
+                    if let token = authToken {
+                        request.setValue("minimax_auth=\(token)", forHTTPHeaderField: "Cookie")
+                    }
 
                     let body: [String: Any] = [
                         "assistant_id": "lead_agent",
@@ -76,7 +88,9 @@ actor LangGraphAPI {
 
     func getThreadState(threadId: String) async throws -> Data {
         let url = baseURL.appendingPathComponent("/api/langgraph/threads/\(threadId)/state")
-        let (data, response) = try await session.data(from: url)
+        var request = URLRequest(url: url)
+        addAuthCookie(to: &request)
+        let (data, response) = try await session.data(for: request)
         try validateResponse(response)
         return data
     }
@@ -85,14 +99,16 @@ actor LangGraphAPI {
 
     func listModels() async throws -> [[String: AnyCodable]] {
         let url = baseURL.appendingPathComponent("/api/models")
-        let (data, response) = try await session.data(from: url)
+        var request = URLRequest(url: url)
+        addAuthCookie(to: &request)
+        let (data, response) = try await session.data(for: request)
         try validateResponse(response)
         return try JSONDecoder().decode([[String: AnyCodable]].self, from: data)
     }
 
     // MARK: - Helpers
 
-    private func validateResponse(_ response: URLResponse) throws {
+    private nonisolated func validateResponse(_ response: URLResponse) throws {
         guard let http = response as? HTTPURLResponse else {
             throw APIError.invalidResponse
         }

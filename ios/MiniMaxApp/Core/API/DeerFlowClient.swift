@@ -1,42 +1,51 @@
 import Foundation
 
 /// High-level client that wraps LangGraphAPI with convenience methods.
-@MainActor
-final class DeerFlowClient: ObservableObject {
+/// Uses its own actor executor so streaming never blocks the main thread.
+actor DeerFlowClient {
     private let api: LangGraphAPI
+    private let authToken: String?
 
-    init(baseURL: URL) {
-        self.api = LangGraphAPI(baseURL: baseURL)
+    init(baseURL: URL, authToken: String? = nil) {
+        self.api = LangGraphAPI(baseURL: baseURL, authToken: authToken)
+        self.authToken = authToken
     }
 
     func createThread() async throws -> ThreadResponse {
         try await api.createThread()
     }
 
-    /// Streams a response from DeerFlow and calls back with content deltas.
+    struct StreamResult {
+        let content: String
+        let reasoning: String
+    }
+
+    /// Streams a response from DeerFlow, calling onUpdate for each delta, and returns the final result.
     func streamMessage(
         threadId: String,
         message: String,
         modelName: String,
-        onDelta: @escaping (String) -> Void,
-        onReasoning: @escaping (String) -> Void,
-        onToolEvent: @escaping (String, String) -> Void
-    ) async throws {
-        let stream = api.streamRun(threadId: threadId, message: message, modelName: modelName)
+        onUpdate: @escaping @Sendable (String, String) -> Void
+    ) async throws -> StreamResult {
+        let stream = api.streamRun(threadId: threadId, message: message, modelName: modelName, authToken: authToken)
+
+        var accContent = ""
+        var accReasoning = ""
 
         for try await event in stream {
             switch event.event {
             case "messages-tuple", "messages/partial":
-                // Parse message tuple: [type, {content, ...}]
                 if let data = event.data.data(using: .utf8),
                    let array = try? JSONSerialization.jsonObject(with: data) as? [Any],
                    array.count >= 2,
                    let payload = array[1] as? [String: Any] {
                     if let content = payload["content"] as? String {
-                        onDelta(content)
+                        accContent = content
+                        onUpdate(accContent, accReasoning)
                     }
                     if let reasoning = payload["reasoning_content"] as? String {
-                        onReasoning(reasoning)
+                        accReasoning += reasoning
+                        onUpdate(accContent, accReasoning)
                     }
                 }
 
@@ -45,18 +54,18 @@ final class DeerFlowClient: ObservableObject {
                    let payload = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
                    let eventName = payload["event"] as? String,
                    let toolName = payload["name"] as? String {
-                    onToolEvent(eventName, toolName)
+                    print("Tool event: \(eventName) - \(toolName)")
                 }
 
             case "values":
-                // Full state update — extract latest assistant message
                 if let data = event.data.data(using: .utf8),
                    let payload = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
                    let messages = payload["messages"] as? [[String: Any]],
                    let last = messages.last,
                    let type = last["type"] as? String, type == "ai",
                    let content = last["content"] as? String {
-                    onDelta(content)
+                    accContent = content
+                    onUpdate(accContent, accReasoning)
                 }
 
             case "end":
@@ -66,5 +75,7 @@ final class DeerFlowClient: ObservableObject {
                 break
             }
         }
+
+        return StreamResult(content: accContent, reasoning: accReasoning)
     }
 }

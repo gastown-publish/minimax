@@ -34,7 +34,13 @@ export function getStoredUser(): AuthUser | null {
   const stored = localStorage.getItem(STORAGE_KEY);
   if (!stored) return null;
   try {
-    return JSON.parse(stored) as AuthUser;
+    const user = JSON.parse(stored) as AuthUser;
+    // Ensure cross-subdomain cookie exists (handles sessions created before cookie code was added)
+    if (user && !document.cookie.includes("minimax_auth=")) {
+      const encoded = encodeURIComponent(JSON.stringify({ email: user.email, sub: user.sub, accessToken: user.accessToken, idToken: user.idToken }));
+      document.cookie = `minimax_auth=${encoded}; domain=.villamarket.ai; path=/; max-age=86400; secure; samesite=lax`;
+    }
+    return user;
   } catch {
     return null;
   }

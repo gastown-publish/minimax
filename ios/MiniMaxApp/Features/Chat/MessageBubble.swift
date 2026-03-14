@@ -39,6 +39,8 @@ struct MessageBubble: View {
             }
         }
         .padding(.horizontal)
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("message_\(message.role.rawValue)")
     }
 
     private var backgroundColor: Color {

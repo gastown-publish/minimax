@@ -5,6 +5,13 @@ import SwiftData
 struct MiniMaxApp: App {
     @StateObject private var appState = AppState()
 
+    init() {
+        // Disable animations during UI testing to prevent XCTest idle timeouts
+        if ProcessInfo.processInfo.environment["DISABLE_ANIMATIONS"] == "1" {
+            UIView.setAnimationsEnabled(false)
+        }
+    }
+
     var body: some Scene {
         WindowGroup {
             ContentView()

@@ -28,8 +28,8 @@ final class ChatViewModel: ObservableObject {
     private var modelName: String = "minimax-m2.5"
     private var streamTask: Task<Void, Never>?
 
-    func configure(baseURL: URL, threadId: String, modelName: String) {
-        self.client = DeerFlowClient(baseURL: baseURL)
+    func configure(baseURL: URL, threadId: String, modelName: String, authToken: String? = nil) {
+        self.client = DeerFlowClient(baseURL: baseURL, authToken: authToken)
         self.threadId = threadId
         self.modelName = modelName
     }
@@ -47,30 +47,24 @@ final class ChatViewModel: ObservableObject {
         isStreaming = true
         streamingContent = ""
 
+        let model = modelName
+
+        // Task inherits @MainActor but the await hops to DeerFlowClient's actor,
+        // freeing the main thread during streaming.
         streamTask = Task {
             do {
-                var accContent = ""
-                var accReasoning = ""
-
-                try await client.streamMessage(
+                let result = try await client.streamMessage(
                     threadId: threadId,
                     message: text,
-                    modelName: modelName,
-                    onDelta: { content in
-                        accContent = content
-                        self.updateLastMessage(content: accContent, reasoning: accReasoning)
-                    },
-                    onReasoning: { reasoning in
-                        accReasoning += reasoning
-                        self.updateLastMessage(content: accContent, reasoning: accReasoning)
-                    },
-                    onToolEvent: { event, tool in
-                        // Could show tool execution status in UI
-                        print("Tool event: \(event) - \(tool)")
+                    modelName: model,
+                    onUpdate: { [weak self] content, reasoning in
+                        Task { @MainActor [weak self] in
+                            self?.updateLastMessage(content: content, reasoning: reasoning)
+                        }
                     }
                 )
 
-                finalizeLastMessage(content: accContent, reasoning: accReasoning)
+                finalizeLastMessage(content: result.content, reasoning: result.reasoning)
             } catch {
                 if !Task.isCancelled {
                     finalizeLastMessage(content: "Error: \(error.localizedDescription)", reasoning: "")

@@ -19,8 +19,9 @@ struct ChatView: View {
 
                         if viewModel.isStreaming {
                             HStack(spacing: 8) {
-                                ProgressView()
-                                    .scaleEffect(0.8)
+                                Image(systemName: "ellipsis")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
                                 Text("Thinking...")
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
@@ -28,19 +29,16 @@ struct ChatView: View {
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .padding(.horizontal)
                             .id("streaming-indicator")
+                            .accessibilityIdentifier("streamingIndicator")
                         }
                     }
                     .padding(.vertical, 12)
                 }
                 .onChange(of: viewModel.messages.count) { _, _ in
-                    withAnimation {
-                        proxy.scrollTo(viewModel.messages.last?.id ?? "streaming-indicator", anchor: .bottom)
-                    }
+                    proxy.scrollTo(viewModel.messages.last?.id ?? "streaming-indicator", anchor: .bottom)
                 }
                 .onChange(of: viewModel.streamingContent) { _, _ in
-                    withAnimation {
-                        proxy.scrollTo(viewModel.messages.last?.id ?? "streaming-indicator", anchor: .bottom)
-                    }
+                    proxy.scrollTo(viewModel.messages.last?.id ?? "streaming-indicator", anchor: .bottom)
                 }
             }
 
@@ -51,6 +49,7 @@ struct ChatView: View {
                 TextField("Message", text: $viewModel.inputText, axis: .vertical)
                     .textFieldStyle(.plain)
                     .lineLimit(1...5)
+                    .accessibilityIdentifier("messageInput")
                     .onSubmit { sendMessage() }
 
                 if viewModel.isStreaming {
@@ -69,6 +68,7 @@ struct ChatView: View {
                             .font(.title2)
                             .foregroundStyle(viewModel.inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? .gray : .blue)
                     }
+                    .accessibilityIdentifier("sendButton")
                     .disabled(viewModel.inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 }
             }
@@ -81,7 +81,8 @@ struct ChatView: View {
             viewModel.configure(
                 baseURL: appState.baseURL,
                 threadId: threadId,
-                modelName: appState.modelName
+                modelName: appState.modelName,
+                authToken: appState.authToken
             )
         }
     }

@@ -39,6 +39,7 @@ struct ThreadListView: View {
                 } label: {
                     Image(systemName: "plus")
                 }
+                .accessibilityIdentifier("newChatButton")
             }
         }
     }
