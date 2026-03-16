@@ -23,9 +23,9 @@ type InstallMethod = "curl" | "brew" | "pip" | "uv" | "apt";
 const installCommands: Record<InstallMethod, string> = {
   curl: "curl -fsSL minimax.villamarket.ai/install | sh",
   brew: "brew install gastown-publish/mm/mm",
-  pip: "pip install mm-cli",
-  uv: "uv tool install mm-cli",
-  apt: "sudo apt install mm-cli",
+  pip: "pip install minimax-agent",
+  uv: "uv tool install minimax-agent",
+  apt: "sudo apt install minimax-agent",
 };
 
 function InstallTabs() {

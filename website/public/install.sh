@@ -1,80 +1,83 @@
 #!/bin/sh
 # mm CLI installer — https://minimax.villamarket.ai/install
 # Usage: curl -fsSL minimax.villamarket.ai/install | sh
+#
+# Self-contained: only requires Python 3.10+. Creates its own venv.
 set -e
 
-VERSION="0.2.0"
+PACKAGE="minimax-agent"
+INSTALL_DIR="$HOME/.local/share/mm"
+BIN_DIR="$HOME/.local/bin"
 
 echo ""
 echo "  mm — MiniMax-M2.5 AI terminal agent"
 echo "  https://minimax.villamarket.ai"
 echo ""
 
-# ── Install via best available Python tool ─────────────────────────────
-
-installed=0
-
-# 1. uv (fastest, isolated)
-if [ "$installed" = 0 ] && command -v uv >/dev/null 2>&1; then
-    echo "Installing with uv..."
-    uv tool install -U mm-cli
-    installed=1
-fi
-
-# 2. pipx (isolated)
-if [ "$installed" = 0 ] && command -v pipx >/dev/null 2>&1; then
-    echo "Installing with pipx..."
-    pipx install mm-cli
-    installed=1
-fi
-
-# 3. pip3 / pip
-if [ "$installed" = 0 ]; then
-    PIP=""
-    if command -v pip3 >/dev/null 2>&1; then
-        PIP="pip3"
-    elif command -v pip >/dev/null 2>&1; then
-        PIP="pip"
+# ── Check Python ───────────────────────────────────────────────────────
+PYTHON=""
+for cmd in python3 python; do
+    if command -v "$cmd" >/dev/null 2>&1; then
+        # Check version >= 3.10
+        ver=$("$cmd" -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')" 2>/dev/null || echo "0.0")
+        major=$(echo "$ver" | cut -d. -f1)
+        minor=$(echo "$ver" | cut -d. -f2)
+        if [ "$major" -ge 3 ] && [ "$minor" -ge 10 ]; then
+            PYTHON="$cmd"
+            break
+        fi
     fi
+done
 
-    if [ -n "$PIP" ]; then
-        echo "Installing with ${PIP}..."
-        $PIP install --user mm-cli
-        installed=1
-    fi
-fi
-
-# 4. Nothing worked — suggest installing uv
-if [ "$installed" = 0 ]; then
-    echo "No Python package manager found (uv, pipx, or pip)."
+if [ -z "$PYTHON" ]; then
+    echo "Error: Python 3.10+ is required but not found."
     echo ""
-    echo "Install uv first (recommended):"
-    echo "  curl -LsSf https://astral.sh/uv/install.sh | sh"
-    echo ""
-    echo "Then re-run this installer, or just:"
-    echo "  uv tool install mm-cli"
+    echo "Install Python first:"
+    echo "  macOS:  brew install python@3.12"
+    echo "  Ubuntu: sudo apt install python3"
+    echo "  Other:  https://www.python.org/downloads/"
     exit 1
 fi
+
+echo "Using $PYTHON ($($PYTHON --version 2>&1))"
+
+# ── Create venv and install ────────────────────────────────────────────
+echo "Installing to $INSTALL_DIR..."
+mkdir -p "$INSTALL_DIR" "$BIN_DIR"
+
+# Create or update the venv
+if [ ! -f "$INSTALL_DIR/bin/python" ]; then
+    "$PYTHON" -m venv "$INSTALL_DIR"
+fi
+
+# Install/upgrade the package
+"$INSTALL_DIR/bin/pip" install --quiet --upgrade "$PACKAGE"
+
+# Symlink binaries
+ln -sf "$INSTALL_DIR/bin/mm" "$BIN_DIR/mm" 2>/dev/null || true
+ln -sf "$INSTALL_DIR/bin/minimax" "$BIN_DIR/minimax" 2>/dev/null || true
 
 echo ""
 
 # ── Verify ─────────────────────────────────────────────────────────────
 if command -v mm >/dev/null 2>&1; then
     echo "Installed: $(mm --version)"
+elif [ -x "$BIN_DIR/mm" ]; then
+    echo "Installed: $("$BIN_DIR/mm" --version)"
     echo ""
-    echo "Get started:"
-    echo "  mm auth login     # Set your API key"
-    echo "  mm run            # Start chatting"
-    echo "  mm term           # Launch Toad TUI"
-    echo "  mm loop 'task'    # Ralph Loop (iterative dev)"
-    echo "  mm skills list    # List bundled skills"
-    echo ""
-    echo "Docs: https://minimax.villamarket.ai/docs"
-else
-    echo "Warning: mm not found in PATH."
-    echo ""
-    echo "Try adding this to your shell profile:"
+    echo "Add this to your shell profile (~/.bashrc, ~/.zshrc, etc.):"
     echo '  export PATH="$HOME/.local/bin:$PATH"'
-    echo ""
-    echo "Then run: mm --version"
+else
+    echo "Error: Installation failed."
+    exit 1
 fi
+
+echo ""
+echo "Get started:"
+echo "  mm auth login     # Set your API key"
+echo "  mm run            # Start chatting"
+echo "  mm term           # Launch Toad TUI"
+echo "  mm loop 'task'    # Ralph Loop (iterative dev)"
+echo "  mm skills list    # List bundled skills"
+echo ""
+echo "Docs: https://minimax.villamarket.ai/docs"

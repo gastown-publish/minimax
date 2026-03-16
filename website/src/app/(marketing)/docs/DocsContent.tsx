@@ -369,10 +369,10 @@ for chunk in stream:
                   {[
                     ["curl", "curl -fsSL minimax.villamarket.ai/install | sh"],
                     ["brew", "brew install gastown-publish/mm/mm"],
-                    ["pip", "pip install mm-cli"],
-                    ["uv", "uv tool install mm-cli"],
-                    ["pipx", "pipx install mm-cli"],
-                    ["apt", "sudo apt install mm-cli"],
+                    ["pip", "pip install minimax-agent"],
+                    ["uv", "uv tool install minimax-agent"],
+                    ["pipx", "pipx install minimax-agent"],
+                    ["apt", "sudo apt install minimax-agent"],
                   ].map(([method, cmd]) => (
                     <tr key={method} className="border-b border-[var(--border)]">
                       <td className="py-2 px-3 font-semibold">{method}</td>

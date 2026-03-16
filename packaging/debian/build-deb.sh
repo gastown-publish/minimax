@@ -1,9 +1,9 @@
 #!/bin/bash
-# Build a .deb package for mm-cli
+# Build a .deb package for minimax-agent
 set -euo pipefail
 
 VERSION="0.2.0"
-PKG="mm-cli"
+PKG="minimax-agent"
 ARCH="all"  # Pure Python, architecture-independent
 WORKDIR=$(mktemp -d)
 DEB_ROOT="${WORKDIR}/${PKG}_${VERSION}_${ARCH}"
@@ -12,7 +12,7 @@ echo "Building ${PKG}_${VERSION}_${ARCH}.deb ..."
 
 # Create directory structure
 mkdir -p "${DEB_ROOT}/DEBIAN"
-mkdir -p "${DEB_ROOT}/usr/lib/mm-cli"
+mkdir -p "${DEB_ROOT}/usr/lib/minimax-agent"
 mkdir -p "${DEB_ROOT}/usr/bin"
 
 # Control file
@@ -34,9 +34,9 @@ EOF
 cat > "${DEB_ROOT}/DEBIAN/postinst" <<'EOF'
 #!/bin/bash
 set -e
-VENV=/usr/lib/mm-cli/venv
+VENV=/usr/lib/minimax-agent/venv
 python3 -m venv "$VENV"
-"$VENV/bin/pip" install --quiet mm-cli
+"$VENV/bin/pip" install --quiet minimax-agent
 # Symlink binaries
 ln -sf "$VENV/bin/mm" /usr/bin/mm
 ln -sf "$VENV/bin/minimax" /usr/bin/minimax
@@ -49,7 +49,7 @@ cat > "${DEB_ROOT}/DEBIAN/prerm" <<'EOF'
 #!/bin/bash
 set -e
 rm -f /usr/bin/mm /usr/bin/minimax
-rm -rf /usr/lib/mm-cli/venv
+rm -rf /usr/lib/minimax-agent/venv
 EOF
 chmod 755 "${DEB_ROOT}/DEBIAN/prerm"
 

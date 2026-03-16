@@ -3,7 +3,7 @@ requires = ["setuptools>=68.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "mm-cli"
+name = "minimax-agent"
 version = "0.2.0"
 description = "MiniMax-M2.5 AI terminal agent — chat, code, and create"
 readme = "README.md"
