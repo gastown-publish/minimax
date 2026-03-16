@@ -2,10 +2,11 @@
 # mm CLI installer — https://minimax.villamarket.ai/install
 # Usage: curl -fsSL minimax.villamarket.ai/install | sh
 #
-# Self-contained: only requires Python 3.10+. Creates its own venv.
+# Self-contained: only requires Python 3.10+ and curl.
+# Downloads wheel from GitHub Releases, installs in its own venv.
 set -e
 
-PACKAGE="minimax-agent"
+REPO="gastown-publish/minimax"
 INSTALL_DIR="$HOME/.local/share/mm"
 BIN_DIR="$HOME/.local/bin"
 
@@ -14,11 +15,16 @@ echo "  mm — MiniMax-M2.5 AI terminal agent"
 echo "  https://minimax.villamarket.ai"
 echo ""
 
+# ── Check curl ────────────────────────────────────────────────────────
+if ! command -v curl >/dev/null 2>&1; then
+    echo "Error: curl is required but not found."
+    exit 1
+fi
+
 # ── Check Python ───────────────────────────────────────────────────────
 PYTHON=""
 for cmd in python3 python; do
     if command -v "$cmd" >/dev/null 2>&1; then
-        # Check version >= 3.10
         ver=$("$cmd" -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')" 2>/dev/null || echo "0.0")
         major=$(echo "$ver" | cut -d. -f1)
         minor=$(echo "$ver" | cut -d. -f2)
@@ -41,17 +47,49 @@ fi
 
 echo "Using $PYTHON ($($PYTHON --version 2>&1))"
 
-# ── Create venv and install ────────────────────────────────────────────
+# ── Find latest wheel from GitHub Releases ────────────────────────────
+echo "Fetching latest release from GitHub..."
+WHEEL_URL=$("$PYTHON" -c "
+import json, sys, urllib.request
+url = 'https://api.github.com/repos/$REPO/releases/latest'
+req = urllib.request.Request(url, headers={'Accept': 'application/vnd.github+json'})
+data = json.loads(urllib.request.urlopen(req).read())
+for asset in data.get('assets', []):
+    if asset['name'].endswith('.whl'):
+        print(asset['browser_download_url'])
+        sys.exit(0)
+print('', end='')
+sys.exit(1)
+" 2>/dev/null) || true
+
+if [ -z "$WHEEL_URL" ]; then
+    echo "Error: Could not find wheel in latest GitHub release."
+    echo "Check: https://github.com/$REPO/releases"
+    exit 1
+fi
+
+echo "Found: $(basename "$WHEEL_URL")"
+
+# ── Download wheel ────────────────────────────────────────────────────
+TMPDIR=$(mktemp -d)
+WHEEL_FILE="$TMPDIR/$(basename "$WHEEL_URL")"
+echo "Downloading..."
+curl -fsSL -o "$WHEEL_FILE" "$WHEEL_URL"
+
+# ── Create venv and install ───────────────────────────────────────────
 echo "Installing to $INSTALL_DIR..."
 mkdir -p "$INSTALL_DIR" "$BIN_DIR"
 
-# Create or update the venv
+# Create or reuse venv
 if [ ! -f "$INSTALL_DIR/bin/python" ]; then
     "$PYTHON" -m venv "$INSTALL_DIR"
 fi
 
-# Install/upgrade the package
-"$INSTALL_DIR/bin/pip" install --quiet --upgrade "$PACKAGE"
+# Install the wheel directly (no PyPI needed)
+"$INSTALL_DIR/bin/pip" install --quiet --upgrade "$WHEEL_FILE"
+
+# Cleanup
+rm -rf "$TMPDIR"
 
 # Symlink binaries
 ln -sf "$INSTALL_DIR/bin/mm" "$BIN_DIR/mm" 2>/dev/null || true
@@ -59,7 +97,7 @@ ln -sf "$INSTALL_DIR/bin/minimax" "$BIN_DIR/minimax" 2>/dev/null || true
 
 echo ""
 
-# ── Verify ─────────────────────────────────────────────────────────────
+# ── Verify ────────────────────────────────────────────────────────────
 if command -v mm >/dev/null 2>&1; then
     echo "Installed: $(mm --version)"
 elif [ -x "$BIN_DIR/mm" ]; then
