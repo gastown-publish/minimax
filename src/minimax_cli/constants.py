@@ -23,6 +23,7 @@ LITELLM_LOG = Path("/tmp/litellm-minimax.log")
 # ── URLs ──────────────────────────────────────────────────────────────
 VLLM_BASE = "http://localhost:8080"
 LITELLM_BASE = "http://localhost:4000"
+PUBLIC_API_BASE = "https://api.minimax.villamarket.ai"
 PUBLIC_BASE = "https://gpu-workspace.taile8dc37.ts.net/minimax/v1"
 
 # ── Model IDs ─────────────────────────────────────────────────────────

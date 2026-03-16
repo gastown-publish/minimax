@@ -4,12 +4,28 @@ from __future__ import annotations
 
 import httpx
 
-from .constants import LITELLM_BASE, VLLM_BASE
+from .constants import LITELLM_BASE, PUBLIC_API_BASE, VLLM_BASE
 
 
 def _base_url(api_key: str | None = None) -> str:
-    """Use LiteLLM if we have a key, else direct vLLM."""
-    return LITELLM_BASE if api_key else VLLM_BASE
+    """Resolve API base URL. Try local first, fall back to public API."""
+    if api_key:
+        # Try local LiteLLM first, fall back to public
+        try:
+            r = httpx.get(f"{LITELLM_BASE}/health/liveliness", timeout=2)
+            if r.status_code == 200:
+                return LITELLM_BASE
+        except httpx.ConnectError:
+            pass
+        return PUBLIC_API_BASE
+    # No key — try local vLLM, else public API
+    try:
+        r = httpx.get(f"{VLLM_BASE}/health", timeout=2)
+        if r.status_code == 200:
+            return VLLM_BASE
+    except httpx.ConnectError:
+        pass
+    return PUBLIC_API_BASE
 
 
 def _headers(api_key: str | None = None) -> dict:

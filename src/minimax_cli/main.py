@@ -6,9 +6,9 @@ from . import __version__
 
 
 @click.group()
-@click.version_option(__version__, prog_name="minimax")
+@click.version_option(__version__, prog_name="mm")
 def cli():
-    """MiniMax-M2.5 — Ollama-style CLI for self-hosted inference."""
+    """mm — MiniMax-M2.5 AI agent for your terminal."""
 
 
 # Import and register command groups
@@ -19,6 +19,10 @@ from .commands.test_cmd import test
 from .commands.tui_cmd import tui
 from .commands.auth import auth
 from .commands.setup import setup
+from .commands.term import term
+from .commands.acp_cmd import acp
+from .commands.loop import loop
+from .commands.skills_cmd import skills
 
 cli.add_command(run)
 cli.add_command(serve)
@@ -30,3 +34,7 @@ cli.add_command(test)
 cli.add_command(tui)
 cli.add_command(auth)
 cli.add_command(setup)
+cli.add_command(term)
+cli.add_command(acp)
+cli.add_command(loop)
+cli.add_command(skills)
