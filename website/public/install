@@ -4,63 +4,31 @@
 set -e
 
 VERSION="0.2.0"
-REPO="gastown-publish/minimax"
 
 echo ""
 echo "  mm — MiniMax-M2.5 AI terminal agent"
 echo "  https://minimax.villamarket.ai"
 echo ""
 
-# ── Detect OS ──────────────────────────────────────────────────────────
-OS="$(uname -s)"
-case "$OS" in
-    Linux)  OS="linux" ;;
-    Darwin) OS="macos" ;;
-    *)      OS="other" ;;
-esac
-
-# ── Install via best available method ──────────────────────────────────
+# ── Install via best available Python tool ─────────────────────────────
 
 installed=0
 
-# 1. Homebrew (macOS preferred, also works on Linux)
-if [ "$installed" = 0 ] && command -v brew >/dev/null 2>&1; then
-    echo "Installing with Homebrew..."
-    brew tap gastown-publish/mm 2>/dev/null || true
-    brew install mm
-    installed=1
-fi
-
-# 2. apt (Debian/Ubuntu — download .deb from GitHub releases)
-if [ "$installed" = 0 ] && command -v apt-get >/dev/null 2>&1 && [ "$OS" = "linux" ]; then
-    echo "Installing with apt (downloading .deb)..."
-    DEB_URL="https://github.com/${REPO}/releases/download/v${VERSION}/mm-cli_${VERSION}_all.deb"
-    TMPFILE=$(mktemp /tmp/mm-cli-XXXXXX.deb)
-    if curl -fsSL "$DEB_URL" -o "$TMPFILE" 2>/dev/null; then
-        sudo dpkg -i "$TMPFILE" || sudo apt-get install -f -y
-        rm -f "$TMPFILE"
-        installed=1
-    else
-        echo "  .deb not available, falling back to pip..."
-        rm -f "$TMPFILE"
-    fi
-fi
-
-# 3. uv (fast Python package manager)
+# 1. uv (fastest, isolated)
 if [ "$installed" = 0 ] && command -v uv >/dev/null 2>&1; then
     echo "Installing with uv..."
     uv tool install -U mm-cli
     installed=1
 fi
 
-# 4. pipx (isolated Python apps)
+# 2. pipx (isolated)
 if [ "$installed" = 0 ] && command -v pipx >/dev/null 2>&1; then
     echo "Installing with pipx..."
     pipx install mm-cli
     installed=1
 fi
 
-# 5. pip (fallback)
+# 3. pip3 / pip
 if [ "$installed" = 0 ]; then
     PIP=""
     if command -v pip3 >/dev/null 2>&1; then
@@ -76,15 +44,15 @@ if [ "$installed" = 0 ]; then
     fi
 fi
 
-# 6. Nothing worked
+# 4. Nothing worked — suggest installing uv
 if [ "$installed" = 0 ]; then
-    echo "Error: No supported package manager found."
+    echo "No Python package manager found (uv, pipx, or pip)."
     echo ""
-    echo "Install one of these first:"
-    echo "  brew    — https://brew.sh"
-    echo "  uv      — curl -LsSf https://astral.sh/uv/install.sh | sh"
-    echo "  pipx    — python3 -m pip install --user pipx"
-    echo "  pip     — comes with Python 3.10+"
+    echo "Install uv first (recommended):"
+    echo "  curl -LsSf https://astral.sh/uv/install.sh | sh"
+    echo ""
+    echo "Then re-run this installer, or just:"
+    echo "  uv tool install mm-cli"
     exit 1
 fi
 
@@ -105,7 +73,7 @@ if command -v mm >/dev/null 2>&1; then
 else
     echo "Warning: mm not found in PATH."
     echo ""
-    echo "Try adding these to your shell profile:"
+    echo "Try adding this to your shell profile:"
     echo '  export PATH="$HOME/.local/bin:$PATH"'
     echo ""
     echo "Then run: mm --version"
