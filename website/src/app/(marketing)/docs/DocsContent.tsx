@@ -45,6 +45,7 @@ export default function DocsContent() {
     { id: "thinking", label: "Think Blocks" },
     { id: "models", label: "Models" },
     { id: "limits", label: "Rate Limits" },
+    { id: "cli", label: "CLI (mm)" },
     { id: "integrations", label: "Integrations" },
     { id: "errors", label: "Errors" },
   ];
@@ -339,6 +340,101 @@ for chunk in stream:
                       <td className="py-2 px-3">{rpm}</td>
                       <td className="py-2 px-3">{budget}</td>
                       <td className="py-2 px-3">{keys}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          {/* CLI */}
+          <section id="cli">
+            <h2 className="text-xl font-bold mb-4">CLI (mm)</h2>
+            <p className="text-[var(--text-secondary)] mb-4">
+              <code className="text-sky-300 bg-[var(--bg-tertiary)] px-1 rounded">mm</code> is
+              the official MiniMax terminal agent. Chat, code, run skills, and use the
+              Ralph Loop — all from your terminal.
+            </p>
+
+            <h3 className="font-semibold mt-6 mb-3">Install</h3>
+            <CodeBlock code="curl -fsSL minimax.villamarket.ai/install | sh" />
+
+            <p className="text-xs text-[var(--text-secondary)] mt-2 mb-4">
+              Or install manually:{" "}
+              <code className="text-sky-300 bg-[var(--bg-tertiary)] px-1 rounded">pip install mm-cli</code>{" / "}
+              <code className="text-sky-300 bg-[var(--bg-tertiary)] px-1 rounded">uv tool install mm-cli</code>
+            </p>
+
+            <h3 className="font-semibold mt-6 mb-3">Quick Start</h3>
+            <CodeBlock
+              code={`# Authenticate
+mm auth login --key YOUR_API_KEY
+
+# Interactive chat
+mm run
+
+# Launch Toad TUI
+mm term
+
+# Run a skill
+mm skills run code-review "Review my code for bugs"
+
+# Ralph Loop — iterative development
+mm loop "Fix all failing tests" -n 50 -p "ALL_TESTS_PASS"`}
+            />
+
+            <h3 className="font-semibold mt-6 mb-3">Commands</h3>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-[var(--text-secondary)] text-xs uppercase border-b border-[var(--border)]">
+                    <th className="text-left py-2 px-3">Command</th>
+                    <th className="text-left py-2 px-3">Description</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {[
+                    ["mm run", "Interactive chat REPL"],
+                    ["mm term", "Launch Toad TUI"],
+                    ["mm acp", "Start ACP server (for IDEs)"],
+                    ["mm loop", "Ralph Loop (iterative dev)"],
+                    ["mm skills list", "List bundled skills"],
+                    ["mm skills run <name>", "Run a skill"],
+                    ["mm auth login", "Store API key"],
+                    ["mm setup <tool>", "Configure IDE integration"],
+                  ].map(([cmd, desc]) => (
+                    <tr key={cmd} className="border-b border-[var(--border)]">
+                      <td className="py-2 px-3 font-mono text-sky-300">{cmd}</td>
+                      <td className="py-2 px-3 text-[var(--text-secondary)]">{desc}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            <h3 className="font-semibold mt-6 mb-3">Bundled Skills</h3>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-[var(--text-secondary)] text-xs uppercase border-b border-[var(--border)]">
+                    <th className="text-left py-2 px-3">Skill</th>
+                    <th className="text-left py-2 px-3">Description</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {[
+                    ["deep-research", "Systematic web research with sources"],
+                    ["code-review", "Review for bugs, security, performance"],
+                    ["git-commit", "Conventional commit messages"],
+                    ["explain-code", "Step-by-step code explanation"],
+                    ["fix-tests", "Diagnose and fix failing tests"],
+                    ["refactor", "Safe refactoring with verification"],
+                    ["write-tests", "Generate tests for existing code"],
+                    ["ralph-loop", "Iterative development (100 loops)"],
+                  ].map(([skill, desc]) => (
+                    <tr key={skill} className="border-b border-[var(--border)]">
+                      <td className="py-2 px-3 font-mono text-sky-300">{skill}</td>
+                      <td className="py-2 px-3 text-[var(--text-secondary)]">{desc}</td>
                     </tr>
                   ))}
                 </tbody>

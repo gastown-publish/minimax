@@ -78,6 +78,35 @@ export default function LandingContent() {
         </div>
       </section>
 
+      {/* CLI Install */}
+      <section className="max-w-6xl mx-auto px-4 sm:px-6 py-12">
+        <div className="card max-w-2xl mx-auto text-center">
+          <Terminal size={28} className="text-sky-400 mx-auto mb-3" />
+          <h2 className="text-xl font-bold mb-2">Install the CLI</h2>
+          <p className="text-sm text-[var(--text-secondary)] mb-4">
+            Chat, code, and run skills from your terminal with <code className="text-sky-400 bg-[var(--bg-tertiary)] px-1.5 py-0.5 rounded font-mono text-sm">mm</code>
+          </p>
+          <div className="relative group max-w-md mx-auto">
+            <pre className="bg-[var(--bg-tertiary)] border border-[var(--border)] rounded-lg px-4 py-3 text-sm text-left font-mono">
+              <code>curl -fsSL minimax.villamarket.ai/install | sh</code>
+            </pre>
+            <button
+              onClick={() => {
+                navigator.clipboard.writeText("curl -fsSL minimax.villamarket.ai/install | sh");
+              }}
+              className="absolute top-2 right-2 p-1.5 text-[var(--text-secondary)] hover:text-[var(--text-primary)] bg-[var(--bg-secondary)] rounded transition-colors"
+              title="Copy to clipboard"
+            >
+              <Code size={14} />
+            </button>
+          </div>
+          <p className="text-xs text-[var(--text-secondary)] mt-3">
+            or: <code className="text-sky-300">pip install mm-cli</code> &middot;{" "}
+            <code className="text-sky-300">uv tool install mm-cli</code>
+          </p>
+        </div>
+      </section>
+
       {/* Features */}
       <section className="max-w-6xl mx-auto px-4 sm:px-6 py-16">
         <h2 className="text-2xl font-bold text-center mb-12">
