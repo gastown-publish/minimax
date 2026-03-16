@@ -14,7 +14,62 @@ import {
   ArrowRight,
   Terminal,
   Globe,
+  Copy,
+  Check,
 } from "lucide-react";
+
+type InstallMethod = "curl" | "brew" | "pip" | "uv" | "apt";
+
+const installCommands: Record<InstallMethod, string> = {
+  curl: "curl -fsSL minimax.villamarket.ai/install | sh",
+  brew: "brew install gastown-publish/mm/mm",
+  pip: "pip install mm-cli",
+  uv: "uv tool install mm-cli",
+  apt: "sudo apt install mm-cli",
+};
+
+function InstallTabs() {
+  const [method, setMethod] = useState<InstallMethod>("curl");
+  const [copied, setCopied] = useState(false);
+
+  const copy = async () => {
+    await navigator.clipboard.writeText(installCommands[method]);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  return (
+    <div>
+      <div className="flex flex-wrap justify-center gap-1 mb-3">
+        {(Object.keys(installCommands) as InstallMethod[]).map((m) => (
+          <button
+            key={m}
+            onClick={() => { setMethod(m); setCopied(false); }}
+            className={`px-3 py-1.5 text-xs font-mono rounded-md transition-colors ${
+              method === m
+                ? "bg-sky-600/20 text-sky-400 border border-sky-600/30"
+                : "text-[var(--text-secondary)] hover:text-[var(--text-primary)] border border-transparent"
+            }`}
+          >
+            {m}
+          </button>
+        ))}
+      </div>
+      <div className="relative max-w-lg mx-auto">
+        <pre className="bg-[var(--bg-tertiary)] border border-[var(--border)] rounded-lg px-4 py-3 text-sm text-left font-mono overflow-x-auto">
+          <code>{installCommands[method]}</code>
+        </pre>
+        <button
+          onClick={copy}
+          className="absolute top-2 right-2 p-1.5 text-[var(--text-secondary)] hover:text-[var(--text-primary)] bg-[var(--bg-secondary)] rounded transition-colors"
+          title="Copy to clipboard"
+        >
+          {copied ? <Check size={14} /> : <Copy size={14} />}
+        </button>
+      </div>
+    </div>
+  );
+}
 
 export default function LandingContent() {
   const { user } = useAuth();
@@ -84,26 +139,10 @@ export default function LandingContent() {
           <Terminal size={28} className="text-sky-400 mx-auto mb-3" />
           <h2 className="text-xl font-bold mb-2">Install the CLI</h2>
           <p className="text-sm text-[var(--text-secondary)] mb-4">
-            Chat, code, and run skills from your terminal with <code className="text-sky-400 bg-[var(--bg-tertiary)] px-1.5 py-0.5 rounded font-mono text-sm">mm</code>
+            Chat, code, and run skills from your terminal with{" "}
+            <code className="text-sky-400 bg-[var(--bg-tertiary)] px-1.5 py-0.5 rounded font-mono text-sm">mm</code>
           </p>
-          <div className="relative group max-w-md mx-auto">
-            <pre className="bg-[var(--bg-tertiary)] border border-[var(--border)] rounded-lg px-4 py-3 text-sm text-left font-mono">
-              <code>curl -fsSL minimax.villamarket.ai/install | sh</code>
-            </pre>
-            <button
-              onClick={() => {
-                navigator.clipboard.writeText("curl -fsSL minimax.villamarket.ai/install | sh");
-              }}
-              className="absolute top-2 right-2 p-1.5 text-[var(--text-secondary)] hover:text-[var(--text-primary)] bg-[var(--bg-secondary)] rounded transition-colors"
-              title="Copy to clipboard"
-            >
-              <Code size={14} />
-            </button>
-          </div>
-          <p className="text-xs text-[var(--text-secondary)] mt-3">
-            or: <code className="text-sky-300">pip install mm-cli</code> &middot;{" "}
-            <code className="text-sky-300">uv tool install mm-cli</code>
-          </p>
+          <InstallTabs />
         </div>
       </section>
 

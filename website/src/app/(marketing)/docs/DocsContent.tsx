@@ -357,13 +357,34 @@ for chunk in stream:
             </p>
 
             <h3 className="font-semibold mt-6 mb-3">Install</h3>
-            <CodeBlock code="curl -fsSL minimax.villamarket.ai/install | sh" />
-
-            <p className="text-xs text-[var(--text-secondary)] mt-2 mb-4">
-              Or install manually:{" "}
-              <code className="text-sky-300 bg-[var(--bg-tertiary)] px-1 rounded">pip install mm-cli</code>{" / "}
-              <code className="text-sky-300 bg-[var(--bg-tertiary)] px-1 rounded">uv tool install mm-cli</code>
-            </p>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-[var(--text-secondary)] text-xs uppercase border-b border-[var(--border)]">
+                    <th className="text-left py-2 px-3">Method</th>
+                    <th className="text-left py-2 px-3">Command</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {[
+                    ["curl", "curl -fsSL minimax.villamarket.ai/install | sh"],
+                    ["brew", "brew install gastown-publish/mm/mm"],
+                    ["pip", "pip install mm-cli"],
+                    ["uv", "uv tool install mm-cli"],
+                    ["pipx", "pipx install mm-cli"],
+                    ["apt", "sudo apt install mm-cli"],
+                  ].map(([method, cmd]) => (
+                    <tr key={method} className="border-b border-[var(--border)]">
+                      <td className="py-2 px-3 font-semibold">{method}</td>
+                      <td className="py-2 px-3 font-mono text-sky-300 flex items-center gap-2">
+                        <span>{cmd}</span>
+                        <CopyButton text={cmd} />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
 
             <h3 className="font-semibold mt-6 mb-3">Quick Start</h3>
             <CodeBlock
