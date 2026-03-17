@@ -39,29 +39,9 @@ def term():
             click.echo("  npm install -g nori-ai-cli")
             raise SystemExit(1)
 
-    # Install nori-skillsets and senior-swe skillset if not present
-    sks_bin = shutil.which("nori-skillsets")
-    nori_profiles = os.path.expanduser("~/.nori/profiles")
-    senior_swe_dir = os.path.join(nori_profiles, "senior-swe")
-
-    if not os.path.isdir(senior_swe_dir):
-        if not sks_bin:
-            click.echo("Installing nori-skillsets...")
-            npm_bin = shutil.which("npm")
-            if npm_bin:
-                subprocess.run(
-                    [npm_bin, "install", "-g", "nori-skillsets"],
-                    capture_output=True,
-                )
-                sks_bin = shutil.which("nori-skillsets")
-
-        if sks_bin:
-            click.echo("Installing senior-swe skillset...")
-            subprocess.run(
-                [sks_bin, "install", "senior-swe", "--non-interactive"],
-                capture_output=True,
-                timeout=30,
-            )
+    # Install senior-swe skillset (shared with mm launch nori)
+    from .launch import _ensure_senior_swe
+    _ensure_senior_swe()
 
     # Get API key and set env vars for Claude Code backend
     key = get_api_key()

@@ -34,7 +34,7 @@ def _headers(api_key: str | None = None) -> dict:
     return {}
 
 
-def check_health(api_key: str | None = None, timeout: float = 5) -> bool:
+def check_health(api_key: str | None = None, timeout: float = 10) -> bool:
     """Return True if the server is healthy."""
     base = _base_url(api_key)
     # Try LiteLLM health endpoint (works on localhost), fall back to /v1/models (works on public API)

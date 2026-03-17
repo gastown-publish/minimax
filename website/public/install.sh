@@ -4,6 +4,7 @@
 #
 # Self-contained: only requires Python 3.10+ and curl.
 # Downloads wheel from GitHub Releases, installs in its own venv.
+# Safe to re-run — removes old version before installing new one.
 set -e
 
 REPO="gastown-publish/minimax"
@@ -47,6 +48,39 @@ fi
 
 echo "Using $PYTHON ($($PYTHON --version 2>&1))"
 
+# ── Remove old installations ─────────────────────────────────────────
+# Remove old user-level pip install (if any)
+for pip_cmd in pip3 pip; do
+    if command -v "$pip_cmd" >/dev/null 2>&1; then
+        if "$pip_cmd" show minimax-agent >/dev/null 2>&1; then
+            echo "Removing old pip install of minimax-agent..."
+            "$pip_cmd" uninstall -y minimax-agent 2>/dev/null || true
+        fi
+    fi
+done
+
+# Remove stale symlinks
+for bin_name in mm minimax; do
+    target="$BIN_DIR/$bin_name"
+    if [ -L "$target" ]; then
+        # Check if symlink points to a dead target
+        if [ ! -e "$target" ]; then
+            echo "Removing stale symlink: $target"
+            rm -f "$target"
+        fi
+    fi
+done
+
+# Remove old venv to ensure clean install
+if [ -d "$INSTALL_DIR" ]; then
+    OLD_VER=""
+    if [ -x "$INSTALL_DIR/bin/mm" ]; then
+        OLD_VER=$("$INSTALL_DIR/bin/mm" --version 2>/dev/null || echo "unknown")
+    fi
+    echo "Removing old installation${OLD_VER:+ ($OLD_VER)}..."
+    rm -rf "$INSTALL_DIR"
+fi
+
 # ── Find latest wheel from GitHub Releases ────────────────────────────
 echo "Fetching latest release from GitHub..."
 WHEEL_URL=$("$PYTHON" -c "
@@ -80,13 +114,11 @@ curl -fsSL -o "$WHEEL_FILE" "$WHEEL_URL"
 echo "Installing to $INSTALL_DIR..."
 mkdir -p "$INSTALL_DIR" "$BIN_DIR"
 
-# Create or reuse venv
-if [ ! -f "$INSTALL_DIR/bin/python" ]; then
-    "$PYTHON" -m venv "$INSTALL_DIR"
-fi
+# Create fresh venv
+"$PYTHON" -m venv "$INSTALL_DIR"
 
 # Install the wheel directly (no PyPI needed)
-"$INSTALL_DIR/bin/pip" install --quiet --upgrade "$WHEEL_FILE"
+"$INSTALL_DIR/bin/pip" install --quiet "$WHEEL_FILE"
 
 # Cleanup
 rm -rf "$TMPDIR"
@@ -114,8 +146,8 @@ echo ""
 echo "Get started:"
 echo "  mm auth login     # Set your API key"
 echo "  mm run            # Start chatting"
-echo "  mm term           # Launch Toad TUI"
-echo "  mm loop 'task'    # Ralph Loop (iterative dev)"
+echo "  mm term           # Launch Nori TUI"
+echo "  mm launch claude  # Use with Claude Code"
 echo "  mm skills list    # List bundled skills"
 echo ""
 echo "Docs: https://minimax.villamarket.ai/docs"

@@ -5,10 +5,35 @@ import click
 from . import __version__
 
 
-@click.group()
+CONTEXT_SETTINGS = {"help_option_names": ["-h", "--help"]}
+
+
+@click.group(context_settings=CONTEXT_SETTINGS)
 @click.version_option(__version__, prog_name="mm")
 def cli():
     """mm — MiniMax-M2.5 AI agent for your terminal."""
+
+
+@cli.command("completion")
+@click.argument("shell", type=click.Choice(["bash", "zsh", "fish"]))
+def completion(shell: str):
+    """Generate shell completion script.
+
+    Add to your shell profile:
+
+    \b
+      bash:  eval "$(mm completion bash)"
+      zsh:   eval "$(mm completion zsh)"
+      fish:  mm completion fish | source
+    """
+    from click.shell_completion import get_completion_class
+
+    comp_cls = get_completion_class(shell)
+    if comp_cls is None:
+        raise click.ClickException(f"Unsupported shell: {shell}")
+
+    comp = comp_cls(cli, {}, "mm", "_MM_COMPLETE")
+    click.echo(comp.source())
 
 
 # Import and register command groups

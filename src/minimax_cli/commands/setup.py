@@ -23,7 +23,7 @@ def _require_key() -> str:
     return key
 
 
-@click.group()
+@click.group(context_settings={"help_option_names": ["-h", "--help"]})
 def setup():
     """Configure AI coding tools to use MiniMax-M2.5."""
 

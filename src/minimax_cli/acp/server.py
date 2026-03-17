@@ -1,20 +1,30 @@
-"""ACP server bridging MiniMax-M2.5 to Toad and IDEs."""
+"""ACP server bridging MiniMax-M2.5 to Toad and IDEs.
+
+Provides a full coding agent with tool execution:
+- bash: Run shell commands
+- read_file: Read file contents
+- write_file: Write/create files
+- list_files: List directory contents
+- grep_search: Search file contents with regex
+"""
 
 from __future__ import annotations
 
 import asyncio
+import json
+import os
+import subprocess
 import uuid
+from pathlib import Path
 from typing import Any
 
 from acp import (
-    Agent,
     InitializeResponse,
     LoadSessionResponse,
     NewSessionResponse,
     PROTOCOL_VERSION,
     PromptResponse,
     run_agent,
-    session_notification,
     update_agent_message_text,
 )
 from acp.schema import (
@@ -28,9 +38,224 @@ from ..config import get_api_key
 from ..api import _base_url
 from ..constants import DEFAULT_MODEL
 
+# ── System prompt ────────────────────────────────────────────────────────
+
+SYSTEM_PROMPT = """\
+You are MiniMax-M2.5, a powerful AI coding agent running in the user's terminal.
+
+You have access to tools that let you interact with the user's computer:
+- bash: Execute shell commands (git, npm, python, curl, etc.)
+- read_file: Read file contents
+- write_file: Create or overwrite files
+- list_files: List directory contents
+- grep_search: Search files by content using regex
+
+When the user asks you to do something, USE YOUR TOOLS to accomplish it.
+Do NOT say you can't run commands or access files — you CAN and SHOULD.
+
+Guidelines:
+- Be concise and direct in your responses
+- Use bash for running tests, installing packages, git operations, etc.
+- Read files before modifying them
+- Show what you did and the results
+- If a command fails, try to fix it
+- For multi-step tasks, execute each step and verify before continuing
+"""
+
+# ── Tool definitions (OpenAI function calling format) ────────────────────
+
+TOOLS = [
+    {
+        "type": "function",
+        "function": {
+            "name": "bash",
+            "description": "Execute a shell command and return stdout/stderr. Use for git, npm, python, curl, compilation, tests, etc.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "command": {
+                        "type": "string",
+                        "description": "The shell command to execute",
+                    },
+                },
+                "required": ["command"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "read_file",
+            "description": "Read the contents of a file. Returns the file text.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "path": {
+                        "type": "string",
+                        "description": "Absolute or relative file path to read",
+                    },
+                },
+                "required": ["path"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "write_file",
+            "description": "Write content to a file. Creates the file if it doesn't exist, overwrites if it does.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "path": {
+                        "type": "string",
+                        "description": "Absolute or relative file path to write",
+                    },
+                    "content": {
+                        "type": "string",
+                        "description": "The content to write to the file",
+                    },
+                },
+                "required": ["path", "content"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "list_files",
+            "description": "List files and directories in a given path.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "path": {
+                        "type": "string",
+                        "description": "Directory path to list (default: current directory)",
+                    },
+                },
+                "required": [],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "grep_search",
+            "description": "Search file contents using a regex pattern. Returns matching lines with file paths and line numbers.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "pattern": {
+                        "type": "string",
+                        "description": "Regex pattern to search for",
+                    },
+                    "path": {
+                        "type": "string",
+                        "description": "Directory or file to search in (default: current directory)",
+                    },
+                },
+                "required": ["pattern"],
+            },
+        },
+    },
+]
+
+# Maximum agent loop iterations to prevent infinite loops
+MAX_TOOL_ROUNDS = 25
+
+
+# ── Tool execution ───────────────────────────────────────────────────────
+
+def _execute_tool(name: str, args: dict, cwd: str) -> str:
+    """Execute a tool call and return the result as a string."""
+    try:
+        if name == "bash":
+            command = args.get("command", "")
+            result = subprocess.run(
+                command,
+                shell=True,
+                capture_output=True,
+                text=True,
+                timeout=120,
+                cwd=cwd,
+            )
+            output = ""
+            if result.stdout:
+                output += result.stdout
+            if result.stderr:
+                output += result.stderr
+            if result.returncode != 0:
+                output += f"\n[exit code: {result.returncode}]"
+            return output.strip() or "(no output)"
+
+        elif name == "read_file":
+            path = args.get("path", "")
+            file_path = Path(path) if os.path.isabs(path) else Path(cwd) / path
+            if not file_path.exists():
+                return f"Error: File not found: {file_path}"
+            if not file_path.is_file():
+                return f"Error: Not a file: {file_path}"
+            content = file_path.read_text(errors="replace")
+            # Truncate very large files
+            if len(content) > 100_000:
+                content = content[:100_000] + f"\n\n... [truncated, {len(content)} chars total]"
+            return content
+
+        elif name == "write_file":
+            path = args.get("path", "")
+            content = args.get("content", "")
+            file_path = Path(path) if os.path.isabs(path) else Path(cwd) / path
+            file_path.parent.mkdir(parents=True, exist_ok=True)
+            file_path.write_text(content)
+            return f"Written {len(content)} bytes to {file_path}"
+
+        elif name == "list_files":
+            path = args.get("path", cwd)
+            dir_path = Path(path) if os.path.isabs(path) else Path(cwd) / path
+            if not dir_path.exists():
+                return f"Error: Directory not found: {dir_path}"
+            if not dir_path.is_dir():
+                return f"Error: Not a directory: {dir_path}"
+            entries = sorted(dir_path.iterdir())
+            lines = []
+            for entry in entries[:200]:  # Limit to 200 entries
+                suffix = "/" if entry.is_dir() else ""
+                lines.append(f"{entry.name}{suffix}")
+            result = "\n".join(lines)
+            if len(entries) > 200:
+                result += f"\n... ({len(entries)} total entries)"
+            return result or "(empty directory)"
+
+        elif name == "grep_search":
+            pattern = args.get("pattern", "")
+            path = args.get("path", cwd)
+            search_path = Path(path) if os.path.isabs(path) else Path(cwd) / path
+            result = subprocess.run(
+                ["grep", "-rn", "--include=*", "-E", pattern, str(search_path)],
+                capture_output=True,
+                text=True,
+                timeout=30,
+                cwd=cwd,
+            )
+            output = result.stdout.strip()
+            # Truncate large grep results
+            if len(output) > 50_000:
+                output = output[:50_000] + "\n... [truncated]"
+            return output or "(no matches)"
+
+        else:
+            return f"Error: Unknown tool: {name}"
+
+    except subprocess.TimeoutExpired:
+        return "Error: Command timed out (120s limit)"
+    except Exception as e:
+        return f"Error: {type(e).__name__}: {e}"
+
+
+# ── ACP Agent ────────────────────────────────────────────────────────────
 
 class MiniMaxAgent:
-    """ACP agent backed by MiniMax-M2.5."""
+    """ACP agent backed by MiniMax-M2.5 with tool execution."""
 
     def __init__(self) -> None:
         api_key = get_api_key()
@@ -40,6 +265,7 @@ class MiniMaxAgent:
             api_key=api_key or "none",
         )
         self.sessions: dict[str, list[dict]] = {}
+        self.session_cwd: dict[str, str] = {}
         self.conn: Any = None
 
     def on_connect(self, conn: Any) -> None:
@@ -54,7 +280,7 @@ class MiniMaxAgent:
     ) -> InitializeResponse:
         return InitializeResponse(
             protocol_version=PROTOCOL_VERSION,
-            agent_info=Implementation(name="mm", version="0.2.0"),
+            agent_info=Implementation(name="mm", version="0.2.4"),
             agent_capabilities=AgentCapabilities(),
         )
 
@@ -63,14 +289,9 @@ class MiniMaxAgent:
     ) -> NewSessionResponse:
         sid = str(uuid.uuid4())
         self.sessions[sid] = [
-            {
-                "role": "system",
-                "content": (
-                    "You are MiniMax-M2.5, an AI coding agent. "
-                    "Help the user with their task. Be concise and direct."
-                ),
-            }
+            {"role": "system", "content": SYSTEM_PROMPT},
         ]
+        self.session_cwd[sid] = cwd or os.getcwd()
         return NewSessionResponse(session_id=sid)
 
     async def load_session(
@@ -99,6 +320,14 @@ class MiniMaxAgent:
     async def authenticate(self, method_id: str, **kwargs: Any) -> None:
         return None
 
+    async def _send_text(self, session_id: str, text: str) -> None:
+        """Send a text update to the client (Toad)."""
+        if self.conn:
+            await self.conn.session_update(
+                session_id=session_id,
+                update=update_agent_message_text(text),
+            )
+
     async def prompt(
         self,
         prompt: list,
@@ -116,34 +345,91 @@ class MiniMaxAgent:
         # Initialize session if needed
         if session_id not in self.sessions:
             self.sessions[session_id] = [
-                {
-                    "role": "system",
-                    "content": "You are MiniMax-M2.5, an AI coding agent.",
-                }
+                {"role": "system", "content": SYSTEM_PROMPT},
             ]
+            self.session_cwd[session_id] = os.getcwd()
 
+        cwd = self.session_cwd.get(session_id, os.getcwd())
         self.sessions[session_id].append({"role": "user", "content": user_text})
 
-        # Stream response from MiniMax
-        stream = await self.client.chat.completions.create(
-            model=DEFAULT_MODEL,
-            messages=self.sessions[session_id],
-            stream=True,
-            max_tokens=8192,
-        )
+        # Agent loop: call model → execute tools → repeat until done
+        for _round in range(MAX_TOOL_ROUNDS):
+            response = await self.client.chat.completions.create(
+                model=DEFAULT_MODEL,
+                messages=self.sessions[session_id],
+                tools=TOOLS,
+                max_tokens=8192,
+            )
 
-        full_text = ""
-        async for chunk in stream:
-            delta = chunk.choices[0].delta if chunk.choices else None
-            if delta and delta.content:
-                full_text += delta.content
-                if self.conn:
-                    await self.conn.session_update(
-                        session_id=session_id,
-                        update=update_agent_message_text(delta.content),
+            choice = response.choices[0]
+            message = choice.message
+
+            # If model wants to call tools
+            if message.tool_calls:
+                # Add assistant message with tool calls to history
+                self.sessions[session_id].append(message.model_dump())
+
+                # Show the model's reasoning text if any
+                if message.content:
+                    await self._send_text(session_id, message.content)
+
+                # Execute each tool call
+                for tool_call in message.tool_calls:
+                    fn_name = tool_call.function.name
+                    try:
+                        fn_args = json.loads(tool_call.function.arguments)
+                    except json.JSONDecodeError:
+                        fn_args = {}
+
+                    # Show tool invocation to user
+                    if fn_name == "bash":
+                        cmd = fn_args.get("command", "")
+                        await self._send_text(session_id, f"\n\n```bash\n$ {cmd}\n```\n")
+                    elif fn_name == "read_file":
+                        await self._send_text(session_id, f"\n\n*Reading {fn_args.get('path', '')}...*\n")
+                    elif fn_name == "write_file":
+                        await self._send_text(session_id, f"\n\n*Writing {fn_args.get('path', '')}...*\n")
+                    elif fn_name == "list_files":
+                        await self._send_text(session_id, f"\n\n*Listing {fn_args.get('path', cwd)}...*\n")
+                    elif fn_name == "grep_search":
+                        await self._send_text(session_id, f"\n\n*Searching for `{fn_args.get('pattern', '')}`...*\n")
+
+                    # Execute the tool
+                    result = await asyncio.get_event_loop().run_in_executor(
+                        None, _execute_tool, fn_name, fn_args, cwd
                     )
 
-        self.sessions[session_id].append({"role": "assistant", "content": full_text})
+                    # Show truncated result
+                    display_result = result
+                    if len(display_result) > 2000:
+                        display_result = display_result[:2000] + "\n... [truncated]"
+                    if fn_name == "bash":
+                        await self._send_text(session_id, f"\n```\n{display_result}\n```\n")
+                    else:
+                        await self._send_text(session_id, f"\n{display_result}\n")
+
+                    # Add tool result to history
+                    self.sessions[session_id].append({
+                        "role": "tool",
+                        "tool_call_id": tool_call.id,
+                        "content": result,
+                    })
+
+                # Continue the loop — model will see tool results
+                continue
+
+            # No tool calls — model is done, send final text
+            if message.content:
+                await self._send_text(session_id, message.content)
+                self.sessions[session_id].append({
+                    "role": "assistant",
+                    "content": message.content,
+                })
+
+            return PromptResponse(stop_reason="end_turn")
+
+        # Hit max rounds
+        await self._send_text(session_id, "\n\n*[Reached maximum tool execution rounds]*")
         return PromptResponse(stop_reason="end_turn")
 
     async def fork_session(self, cwd: str, session_id: str, **kwargs: Any) -> Any:
@@ -151,6 +437,7 @@ class MiniMaxAgent:
         new_sid = str(uuid.uuid4())
         if session_id in self.sessions:
             self.sessions[new_sid] = list(self.sessions[session_id])
+            self.session_cwd[new_sid] = self.session_cwd.get(session_id, cwd)
         return ForkSessionResponse(session_id=new_sid)
 
     async def resume_session(self, cwd: str, session_id: str, **kwargs: Any) -> Any:
