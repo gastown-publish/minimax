@@ -394,8 +394,13 @@ mm auth login --key YOUR_API_KEY
 # Interactive chat
 mm run
 
-# Launch Toad TUI
+# Launch Nori TUI (multi-provider AI agent)
 mm term
+
+# Launch coding tools pre-configured for MiniMax
+mm launch claude
+mm launch aider
+mm launch nori
 
 # Run a skill
 mm skills run code-review "Review my code for bugs"
@@ -416,7 +421,8 @@ mm loop "Fix all failing tests" -n 50 -p "ALL_TESTS_PASS"`}
                 <tbody>
                   {[
                     ["mm run", "Interactive chat REPL"],
-                    ["mm term", "Launch Toad TUI"],
+                    ["mm term", "Launch Nori TUI"],
+                    ["mm launch <tool>", "Launch AI tools (claude, aider, codex, nori, opencode, openclaw)"],
                     ["mm acp", "Start ACP server (for IDEs)"],
                     ["mm loop", "Ralph Loop (iterative dev)"],
                     ["mm skills list", "List bundled skills"],
@@ -471,11 +477,37 @@ mm loop "Fix all failing tests" -n 50 -p "ALL_TESTS_PASS"`}
             </p>
 
             <h3 className="font-semibold mt-6 mb-3">Claude Code</h3>
+            <p className="text-sm text-[var(--text-secondary)] mb-2">
+              Use <code className="text-sky-300 bg-[var(--bg-tertiary)] px-1 rounded">mm launch claude</code> for
+              one-step setup, or configure manually:
+            </p>
             <CodeBlock
-              code={`# Set environment variables
-export ANTHROPIC_BASE_URL=https://api.minimax.villamarket.ai/v1
+              code={`# Option 1: Use mm launch (recommended)
+mm launch claude
+
+# Option 2: Manual setup
+export ANTHROPIC_BASE_URL=https://api.minimax.villamarket.ai
 export ANTHROPIC_API_KEY=YOUR_API_KEY
-export ANTHROPIC_MODEL=minimax-m2.5`}
+export ANTHROPIC_AUTH_TOKEN=YOUR_API_KEY
+claude --model minimax-m2.5`}
+            />
+
+            <h3 className="font-semibold mt-6 mb-3">Nori</h3>
+            <p className="text-sm text-[var(--text-secondary)] mb-2">
+              Multi-provider AI TUI that wraps Claude, Gemini, and Codex.
+            </p>
+            <CodeBlock
+              code={`# Option 1: Use mm (recommended)
+mm term
+
+# Option 2: Use mm launch
+mm launch nori
+
+# Option 3: Manual
+npm install -g nori-ai-cli
+export ANTHROPIC_BASE_URL=https://api.minimax.villamarket.ai
+export ANTHROPIC_API_KEY=YOUR_API_KEY
+nori`}
             />
 
             <h3 className="font-semibold mt-6 mb-3">Cursor</h3>
@@ -490,9 +522,35 @@ Model: minimax-m2.5`}
 
             <h3 className="font-semibold mt-6 mb-3">Aider</h3>
             <CodeBlock
-              code={`aider --openai-api-base https://api.minimax.villamarket.ai/v1 \\
+              code={`# Option 1: Use mm launch
+mm launch aider
+
+# Option 2: Manual
+aider --openai-api-base https://api.minimax.villamarket.ai/v1 \\
       --openai-api-key YOUR_API_KEY \\
       --model openai/minimax-m2.5`}
+            />
+
+            <h3 className="font-semibold mt-6 mb-3">Codex CLI</h3>
+            <CodeBlock
+              code={`# Option 1: Use mm launch
+mm launch codex
+
+# Option 2: Manual
+export OPENAI_BASE_URL=https://api.minimax.villamarket.ai/v1
+export OPENAI_API_KEY=YOUR_API_KEY
+codex --model minimax-m2.5`}
+            />
+
+            <h3 className="font-semibold mt-6 mb-3">OpenCode</h3>
+            <CodeBlock
+              code={`# Option 1: Use mm launch
+mm launch opencode
+
+# Option 2: Manual
+export OPENAI_BASE_URL=https://api.minimax.villamarket.ai/v1
+export OPENAI_API_KEY=YOUR_API_KEY
+opencode`}
             />
 
             <h3 className="font-semibold mt-6 mb-3">Continue (VS Code)</h3>
@@ -506,6 +564,14 @@ Model: minimax-m2.5`}
     "apiKey": "YOUR_API_KEY"
   }]
 }`}
+            />
+
+            <h3 className="font-semibold mt-6 mb-3">SillyTavern</h3>
+            <CodeBlock
+              code={`API Type: Chat Completion (OpenAI)
+Custom Endpoint: https://api.minimax.villamarket.ai/v1
+API Key: YOUR_API_KEY
+Model: minimax-m2.5`}
             />
           </section>
 
