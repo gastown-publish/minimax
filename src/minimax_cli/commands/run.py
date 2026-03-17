@@ -25,7 +25,10 @@ def run(model: str, system_msg: str | None, temperature: float, max_tokens: int)
     base = _base_url(api_key)
 
     if not check_health(api_key):
-        console.print("[red bold]Server is offline.[/] Start with: minimax serve")
+        if api_key:
+            console.print("[red bold]API unreachable.[/] Check your key with: mm auth status")
+        else:
+            console.print("[red bold]No API key set.[/] Run: mm auth login")
         raise SystemExit(1)
 
     client = OpenAI(base_url=f"{base}/v1", api_key=api_key or "none")
@@ -33,7 +36,13 @@ def run(model: str, system_msg: str | None, temperature: float, max_tokens: int)
     if system_msg:
         messages.append({"role": "system", "content": system_msg})
 
-    source = "LiteLLM :4000" if api_key else "vLLM :8080"
+    # Show actual endpoint being used
+    if "localhost:4000" in base:
+        source = "local LiteLLM"
+    elif "localhost:8080" in base:
+        source = "local vLLM"
+    else:
+        source = base.replace("https://", "").replace("http://", "")
     console.print(f"[bold]MiniMax-M2.5[/] ({source}) — /exit /clear /system <text>")
     console.print()
 

@@ -5,8 +5,10 @@ from pathlib import Path
 # ── Paths ──────────────────────────────────────────────────────────────
 REPO_DIR = Path(__file__).resolve().parents[2]  # /home/nic/data/models/MiniMax-M2.5
 SCRIPTS_DIR = REPO_DIR / "scripts"
-VENV_DIR = Path("/home/nic/data/models/MiniMax-M2.5/.venv")
-MODEL_DIR = Path("/home/nic/data/models/MiniMax-M2.5-HF")
+# Server-only paths — only valid on the self-hosted server
+_SERVER_REPO = Path("/home/nic/data/models/MiniMax-M2.5")
+VENV_DIR = _SERVER_REPO / ".venv" if _SERVER_REPO.exists() else None
+MODEL_DIR = Path("/home/nic/data/models/MiniMax-M2.5-HF") if Path("/home/nic/data/models/MiniMax-M2.5-HF").exists() else None
 
 CONFIG_DIR = Path.home() / ".config" / "minimax"
 CONFIG_FILE = CONFIG_DIR / "config.json"
@@ -24,7 +26,9 @@ LITELLM_LOG = Path("/tmp/litellm-minimax.log")
 VLLM_BASE = "http://localhost:8080"
 LITELLM_BASE = "http://localhost:4000"
 PUBLIC_API_BASE = "https://api.minimax.villamarket.ai"
-PUBLIC_BASE = "https://gpu-workspace.taile8dc37.ts.net/minimax/v1"
+PUBLIC_API_V1 = "https://api.minimax.villamarket.ai/v1"
+# Legacy alias — use PUBLIC_API_BASE for client-facing URLs
+PUBLIC_BASE = PUBLIC_API_BASE + "/v1"
 
 # ── Model IDs ─────────────────────────────────────────────────────────
 MODEL_IDS = ["minimax-m2.5", "MiniMaxAI/MiniMax-M2.5"]

@@ -37,12 +37,15 @@ def _headers(api_key: str | None = None) -> dict:
 def check_health(api_key: str | None = None, timeout: float = 5) -> bool:
     """Return True if the server is healthy."""
     base = _base_url(api_key)
-    endpoint = f"{base}/health/liveliness" if api_key else f"{base}/health"
-    try:
-        r = httpx.get(endpoint, headers=_headers(api_key), timeout=timeout)
-        return r.status_code == 200
-    except Exception:
-        return False
+    # Try LiteLLM health endpoint (works on localhost), fall back to /v1/models (works on public API)
+    for endpoint in [f"{base}/health/liveliness", f"{base}/v1/models"]:
+        try:
+            r = httpx.get(endpoint, headers=_headers(api_key), timeout=timeout)
+            if r.status_code == 200:
+                return True
+        except Exception:
+            continue
+    return False
 
 
 def list_models(api_key: str | None = None, timeout: float = 5) -> list[dict]:
@@ -57,10 +60,11 @@ def list_models(api_key: str | None = None, timeout: float = 5) -> list[dict]:
 
 
 def verify_key(api_key: str, timeout: float = 5) -> bool:
-    """Verify an API key by hitting /v1/models on LiteLLM."""
+    """Verify an API key by hitting /v1/models. Tries local, then public API."""
+    base = _base_url(api_key)
     try:
         r = httpx.get(
-            f"{LITELLM_BASE}/v1/models",
+            f"{base}/v1/models",
             headers={"Authorization": f"Bearer {api_key}"},
             timeout=timeout,
         )
@@ -71,23 +75,24 @@ def verify_key(api_key: str, timeout: float = 5) -> bool:
 
 def _email_body(api_key: str, alias: str = "") -> tuple[str, str]:
     """Return (subject, body) for an API key email."""
-    from .constants import PUBLIC_BASE
+    from .constants import PUBLIC_API_BASE
+    api_v1 = f"{PUBLIC_API_BASE}/v1"
     subject = "Your MiniMax-M2.5 API Key"
     body = (
         f"Hi{' ' + alias if alias else ''},\n\n"
         f"Your MiniMax-M2.5 API key has been created:\n\n"
         f"    {api_key}\n\n"
-        f"API Endpoint: {PUBLIC_BASE}\n"
+        f"API Endpoint: {api_v1}\n"
         f"Model: minimax-m2.5\n\n"
         f"Quick test:\n\n"
-        f"  curl {PUBLIC_BASE}/chat/completions \\\n"
+        f"  curl {api_v1}/chat/completions \\\n"
         f'    -H "Authorization: Bearer {api_key}" \\\n'
         f'    -H "Content-Type: application/json" \\\n'
         f"    -d '{{"
         f'"model": "minimax-m2.5", '
         f'"messages": [{{"role": "user", "content": "Hello!"}}]'
         f"}}'\n\n"
-        f"Docs: https://minimax.villamarket.ai/\n\n"
+        f"Docs: https://minimax.villamarket.ai/docs\n\n"
         f"— MiniMax-M2.5 Server"
     )
     return subject, body

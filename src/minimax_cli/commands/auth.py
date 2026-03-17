@@ -35,7 +35,7 @@ def login(key_opt: str | None):
         console.print(f"Saved to ~/.config/minimax/config.json")
     else:
         console.print("[red]failed![/]")
-        console.print("Could not verify against LiteLLM. Save anyway?")
+        console.print("Could not verify key against the API. Save anyway?")
         if click.confirm("Save key?", default=False):
             save_api_key(key)
             console.print("Saved.")
@@ -48,7 +48,7 @@ def status():
     """Show current auth status and verify key."""
     key = get_api_key()
     if not key:
-        console.print("[yellow]Not authenticated.[/] Run: minimax auth login")
+        console.print("[yellow]Not authenticated.[/] Run: mm auth login")
         return
 
     masked = key[:8] + "..." + key[-4:] if len(key) > 12 else key[:4] + "..."

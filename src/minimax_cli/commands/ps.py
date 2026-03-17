@@ -62,9 +62,37 @@ def _gpu_summary() -> list[str]:
         return []
 
 
+def _is_server_env() -> bool:
+    """Check if we're on the server (PID files or scripts exist)."""
+    from ..constants import SCRIPTS_DIR
+    return SCRIPTS_DIR.exists()
+
+
 @click.command()
 def ps():
-    """Show running processes, GPU usage, and uptime."""
+    """Show running processes, GPU usage, and uptime. [server-admin]"""
+    if not _is_server_env():
+        # Client mode — just show connection status
+        api_key = get_api_key()
+        base_url = "(not configured)"
+        if api_key:
+            from ..api import _base_url
+            base_url = _base_url(api_key)
+
+        console.print("[bold]MiniMax-M2.5 Status[/]")
+        console.print(f"  API Key: {'configured' if api_key else '[yellow]not set[/] — run: mm auth login'}")
+        console.print(f"  Endpoint: {base_url}")
+
+        if api_key:
+            healthy = check_health(api_key)
+            console.print(f"  Status: {'[green]connected[/]' if healthy else '[red]unreachable[/]'}")
+
+        models = api_list_models(api_key) if api_key else []
+        if models:
+            console.print(f"  Models: {', '.join(m.get('id', '?') for m in models)}")
+        return
+
+    # Server mode — full process info
     table = Table(title="MiniMax-M2.5 Status", show_header=True)
     table.add_column("Service", style="bold")
     table.add_column("Status")
@@ -119,11 +147,14 @@ def ps():
 
 @click.command("list")
 def list_models():
-    """List available models from the running server."""
+    """List available models from the API."""
     api_key = get_api_key()
     models = api_list_models(api_key)
     if not models:
-        console.print("[yellow]No models found — is the server running?[/]")
+        if not api_key:
+            console.print("[yellow]No API key set.[/] Run: mm auth login")
+        else:
+            console.print("[yellow]No models found.[/] Check your key with: mm auth status")
         raise SystemExit(1)
 
     table = Table(show_header=True)

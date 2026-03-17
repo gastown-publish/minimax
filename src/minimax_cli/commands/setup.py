@@ -10,7 +10,7 @@ import click
 from rich.console import Console
 
 from ..config import get_api_key
-from ..constants import PUBLIC_BASE, DEFAULT_MODEL
+from ..constants import PUBLIC_API_BASE, DEFAULT_MODEL
 
 console = Console()
 
@@ -18,7 +18,7 @@ console = Console()
 def _require_key() -> str:
     key = get_api_key()
     if not key:
-        console.print("[red]No API key found.[/] Run: minimax auth login")
+        console.print("[red]No API key found.[/] Run: mm auth login")
         raise SystemExit(1)
     return key
 
@@ -34,7 +34,7 @@ def claude(write: bool):
     """Configure Claude Code to use MiniMax-M2.5."""
     key = _require_key()
     lines = [
-        f'export ANTHROPIC_BASE_URL="{PUBLIC_BASE}"',
+        f'export ANTHROPIC_BASE_URL="{PUBLIC_API_BASE}"',
         f'export ANTHROPIC_API_KEY="{key}"',
     ]
     console.print("[bold]Claude Code — add to your shell profile:[/]\n")
@@ -56,7 +56,7 @@ def codex():
     content = (
         f"provider: openai\n"
         f"model: {DEFAULT_MODEL}\n"
-        f"base_url: {PUBLIC_BASE}\n"
+        f"base_url: {PUBLIC_API_BASE}\n"
         f"api_key: {key}\n"
     )
 
@@ -74,7 +74,7 @@ def openclaw():
         "id": "minimax",
         "name": "MiniMax-M2.5",
         "api": "openai-completions",
-        "baseUrl": PUBLIC_BASE,
+        "baseUrl": PUBLIC_API_BASE,
         "apiKey": key,
         "timeout": 600000,
         "models": [{
@@ -99,7 +99,7 @@ def opencode():
     config = {
         "provider": {
             "name": "openai-compatible",
-            "apiBase": PUBLIC_BASE,
+            "apiBase": PUBLIC_API_BASE,
             "apiKey": key,
             "model": DEFAULT_MODEL,
         }
@@ -117,7 +117,7 @@ def aider():
     config_file = Path.home() / ".aider.conf.yml"
 
     content = (
-        f"openai-api-base: {PUBLIC_BASE}\n"
+        f"openai-api-base: {PUBLIC_API_BASE}\n"
         f"openai-api-key: {key}\n"
         f"model: openai/{DEFAULT_MODEL}\n"
     )
@@ -137,7 +137,7 @@ def continue_ide():
         "title": "MiniMax-M2.5",
         "provider": "openai",
         "model": DEFAULT_MODEL,
-        "apiBase": PUBLIC_BASE,
+        "apiBase": PUBLIC_API_BASE,
         "apiKey": key,
     }
 
@@ -167,7 +167,7 @@ def cline():
     console.print("[bold]Cline — VS Code Extension Setup[/]\n")
     console.print("1. Open Cline settings in VS Code")
     console.print('2. Set API Provider to [bold]"OpenAI Compatible"[/]')
-    console.print(f"3. Base URL: [cyan]{PUBLIC_BASE}[/]")
+    console.print(f"3. Base URL: [cyan]{PUBLIC_API_BASE}[/]")
     console.print(f"4. API Key: [dim]{key[:8]}...{key[-4:]}[/] (paste your full key)")
     console.print(f"5. Model ID: [cyan]{DEFAULT_MODEL}[/]")
 
