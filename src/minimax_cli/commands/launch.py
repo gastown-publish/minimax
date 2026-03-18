@@ -191,39 +191,52 @@ def _write_kimi_config(key: str):
 
 
 def _ensure_claude_skills():
-    """Copy bundled skills + Nori skills into Claude Code's skills dirs.
+    """Copy bundled skills + Nori skills + CLAUDE.md into Claude Code config.
 
     Claude Code reads skills from ~/.claude/skills/ (global)
     and .claude/skills/ (project). We write to the global dir.
+    Also writes CLAUDE.md to the mm-claude config dir so the agent
+    has context about itself, available skills, and ecosystem.
     """
     from ..skills import SKILLS_DIR
+    from ..claude_md import CLAUDE_MD
 
     # Claude Code always uses ~/.claude/skills/ regardless of CLAUDE_CONFIG_DIR
     target_dir = Path.home() / ".claude" / "skills"
     target_dir.mkdir(parents=True, exist_ok=True)
 
-    # Copy bundled skills
+    # Also install skills into the mm-claude config dir
+    mm_skills_dir = Path(MM_CLAUDE_CONFIG) / "skills"
+    mm_skills_dir.mkdir(parents=True, exist_ok=True)
+
+    # Copy bundled skills to both locations
     for skill_file in SKILLS_DIR.glob("*.md"):
-        dest = target_dir / skill_file.name
-        if not dest.exists() or dest.read_text() != skill_file.read_text():
-            dest.write_text(skill_file.read_text())
+        for dest_dir in (target_dir, mm_skills_dir):
+            dest = dest_dir / skill_file.name
+            if not dest.exists() or dest.read_text() != skill_file.read_text():
+                dest.write_text(skill_file.read_text())
 
     # Copy Nori skills if available
     nori_skills_dir = Path.home() / ".nori" / "profiles" / "senior-swe" / "skills"
     if nori_skills_dir.is_dir():
-        nori_target = target_dir / "nori"
-        nori_target.mkdir(parents=True, exist_ok=True)
-        for skill_dir in nori_skills_dir.iterdir():
-            if skill_dir.is_dir():
-                # Nori skills use SKILL.md
-                for md_name in ("SKILL.md", "prompt.md"):
-                    md_file = skill_dir / md_name
-                    if md_file.exists():
-                        dest = nori_target / f"{skill_dir.name}.md"
-                        content = md_file.read_text()
-                        if not dest.exists() or dest.read_text() != content:
-                            dest.write_text(content)
-                        break
+        for dest_dir in (target_dir, mm_skills_dir):
+            nori_target = dest_dir / "nori"
+            nori_target.mkdir(parents=True, exist_ok=True)
+            for skill_dir in nori_skills_dir.iterdir():
+                if skill_dir.is_dir():
+                    for md_name in ("SKILL.md", "prompt.md"):
+                        md_file = skill_dir / md_name
+                        if md_file.exists():
+                            dest = nori_target / f"{skill_dir.name}.md"
+                            content = md_file.read_text()
+                            if not dest.exists() or dest.read_text() != content:
+                                dest.write_text(content)
+                            break
+
+    # Write CLAUDE.md to mm-claude config dir (agent system context)
+    claude_md_path = Path(MM_CLAUDE_CONFIG) / "CLAUDE.md"
+    if not claude_md_path.exists() or claude_md_path.read_text() != CLAUDE_MD:
+        claude_md_path.write_text(CLAUDE_MD)
 
 
 @click.group(context_settings={"help_option_names": ["-h", "--help"]})
@@ -269,7 +282,12 @@ def claude(no_docker: bool, extra_args: tuple):
         "CLAUDE_CONFIG_DIR": "/root/.mm-claude",
         "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1",
     }
-    docker_args = ("--model", DEFAULT_MODEL) + extra_args
+    from ..claude_md import CLAUDE_MD
+
+    docker_args = (
+        "--model", DEFAULT_MODEL,
+        "--append-system-prompt", CLAUDE_MD,
+    ) + extra_args
 
     console.print(f"[bold]Launching Claude Code[/] with MiniMax-M2.5...")
     console.print(f"  API: {PUBLIC_API_BASE}")
@@ -289,7 +307,8 @@ def claude(no_docker: bool, extra_args: tuple):
         # Remove auth token if set — conflicts with API key
         env.pop("ANTHROPIC_AUTH_TOKEN", None)
 
-        args = [binary, "--model", DEFAULT_MODEL] + list(extra_args)
+        args = [binary, "--model", DEFAULT_MODEL,
+                "--append-system-prompt", CLAUDE_MD] + list(extra_args)
         console.print()
         os.execvpe(binary, args, env)
 
