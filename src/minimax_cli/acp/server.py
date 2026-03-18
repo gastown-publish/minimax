@@ -37,10 +37,11 @@ from openai import AsyncOpenAI
 from ..config import get_api_key
 from ..api import _base_url
 from ..constants import DEFAULT_MODEL
+from ..skills import list_skills, load_skill
 
 # ── System prompt ────────────────────────────────────────────────────────
 
-SYSTEM_PROMPT = """\
+_BASE_SYSTEM_PROMPT = """\
 You are MiniMax-M2.5, a powerful AI coding agent running in the user's terminal.
 
 You have access to tools that let you interact with the user's computer:
@@ -61,6 +62,40 @@ Guidelines:
 - If a command fails, try to fix it
 - For multi-step tasks, execute each step and verify before continuing
 """
+
+# Default skills injected into every ACP session
+_DEFAULT_SKILLS = ["ralph-loop", "code-review", "fix-tests", "git-commit"]
+
+
+def _build_system_prompt() -> str:
+    """Build system prompt with skills injected."""
+    # Check environment for skill overrides
+    skill_names = os.environ.get("MM_SKILLS", "").split(",") if os.environ.get("MM_SKILLS") else _DEFAULT_SKILLS
+    skill_names = [s.strip() for s in skill_names if s.strip()]
+
+    parts = [_BASE_SYSTEM_PROMPT]
+
+    for name in skill_names:
+        content = load_skill(name)
+        if content:
+            parts.append(f"\n## Skill: {name}\n{content}")
+
+    # Include Nori skills if available
+    nori_skills_dir = Path.home() / ".nori" / "profiles" / "senior-swe" / "skills"
+    if nori_skills_dir.is_dir():
+        for skill_dir in sorted(nori_skills_dir.iterdir()):
+            if not skill_dir.is_dir():
+                continue
+            for md_name in ("SKILL.md", "prompt.md"):
+                md_file = skill_dir / md_name
+                if md_file.exists():
+                    parts.append(f"\n## Nori Skill: {skill_dir.name}\n{md_file.read_text()}")
+                    break
+
+    return "\n".join(parts)
+
+
+SYSTEM_PROMPT = _build_system_prompt()
 
 # ── Tool definitions (OpenAI function calling format) ────────────────────
 

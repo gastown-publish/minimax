@@ -130,9 +130,12 @@ ln -sf "$INSTALL_DIR/bin/minimax" "$BIN_DIR/minimax" 2>/dev/null || true
 echo ""
 
 # ── Verify ────────────────────────────────────────────────────────────
+MM_BIN=""
 if command -v mm >/dev/null 2>&1; then
+    MM_BIN="mm"
     echo "Installed: $(mm --version)"
 elif [ -x "$BIN_DIR/mm" ]; then
+    MM_BIN="$BIN_DIR/mm"
     echo "Installed: $("$BIN_DIR/mm" --version)"
     echo ""
     echo "Add this to your shell profile (~/.bashrc, ~/.zshrc, etc.):"
@@ -142,12 +145,19 @@ else
     exit 1
 fi
 
+# ── Shell completion ──────────────────────────────────────────────────
+if [ -n "$MM_BIN" ]; then
+    echo ""
+    echo "Installing shell completion..."
+    "$MM_BIN" completion install 2>/dev/null && echo "Shell completion installed." || echo "Shell completion skipped (unsupported shell)."
+fi
+
 echo ""
 echo "Get started:"
 echo "  mm auth login     # Set your API key"
 echo "  mm run            # Start chatting"
-echo "  mm term           # Launch Nori TUI"
-echo "  mm launch claude  # Use with Claude Code"
-echo "  mm skills list    # List bundled skills"
+echo "  mm launch claude  # Launch Claude Code via Docker"
+echo "  mm launch aider   # Launch Aider via Docker"
+echo "  mm upgrade        # Upgrade to latest version"
 echo ""
 echo "Docs: https://minimax.villamarket.ai/docs"

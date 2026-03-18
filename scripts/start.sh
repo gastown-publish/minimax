@@ -8,21 +8,35 @@ PID_FILE="/tmp/vllm-minimax.pid"
 PORT=8080
 
 # ── GPU Configuration ───────────────────────────────────────────────
-# Default: 4 GPUs (TP4 + EP). Pass "8" to use all 8 GPUs (TP8 + EP).
-NUM_GPUS="${1:-4}"
+# Modes:
+#   4   — 4 GPUs, TP=4, DP=1, EP=4 (default, GPUs 0-3)
+#   8   — 8 GPUs, TP=4, DP=2, EP=8 (recommended for production)
+#   tp8 — 8 GPUs, TP=8, DP=1, EP=8 (lower latency, lower throughput)
+MODE="${1:-4}"
+DP_SIZE=1
+GPU_MEM=0.95
+SWAP=0
 
-if [ "$NUM_GPUS" = "8" ]; then
+if [ "$MODE" = "8" ]; then
+    TP_SIZE=4
+    DP_SIZE=2
+    MAX_SEQS=32
+    GPU_MEM=0.85
+    SWAP=16
+    unset CUDA_VISIBLE_DEVICES
+    GPU_LABEL="8x H100 (TP=4, DP=2, EP=8) — production"
+elif [ "$MODE" = "tp8" ]; then
     TP_SIZE=8
     MAX_SEQS=16
     unset CUDA_VISIBLE_DEVICES
-    GPU_LABEL="8x H100 (TP=8 + EP)"
-elif [ "$NUM_GPUS" = "4" ]; then
+    GPU_LABEL="8x H100 (TP=8, DP=1, EP=8)"
+elif [ "$MODE" = "4" ]; then
     TP_SIZE=4
     MAX_SEQS=16
     export CUDA_VISIBLE_DEVICES=0,1,2,3
-    GPU_LABEL="4x H100 (TP=4 + EP) — GPUs 0-3, GPUs 4-7 free"
+    GPU_LABEL="4x H100 (TP=4, DP=1, EP=4) — GPUs 0-3, GPUs 4-7 free"
 else
-    echo "ERROR: Only 4 or 8 GPUs supported (KV heads=8, TP must divide evenly)"
+    echo "ERROR: Invalid mode '$MODE'. Use: 4, 8, or tp8"
     exit 1
 fi
 
@@ -68,27 +82,41 @@ fi
 echo "Starting vLLM server on port $PORT..."
 echo "Model: MiniMax-M2.5 (FP8, ~230 GB)"
 echo "GPUs:  $GPU_LABEL"
-echo "Config: TP=$TP_SIZE, max-seqs=$MAX_SEQS, ctx=128K, prefix-cache=on, CUDA-graphs=PIECEWISE"
-echo "Optimizations: VLLM_MOE_USE_DEEP_GEMM=0"
+echo "Config: TP=$TP_SIZE, DP=$DP_SIZE, max-seqs=$MAX_SEQS, gpu-mem=$GPU_MEM, ctx=128K"
+echo "Optimizations: VLLM_MOE_USE_DEEP_GEMM=0, prefix-cache=on, CUDA-graphs=PIECEWISE"
 echo "Log:   $LOG"
 
-nohup "$VENV/bin/vllm" serve "$MODEL" \
-    --host 0.0.0.0 \
-    --port "$PORT" \
-    --tensor-parallel-size "$TP_SIZE" \
-    --enable-expert-parallel \
-    --trust-remote-code \
-    --gpu-memory-utilization 0.95 \
-    --max-num-seqs "$MAX_SEQS" \
-    --max-model-len 131072 \
-    --enable-prefix-caching \
-    --enable-chunked-prefill \
-    --enable-auto-tool-choice \
-    --tool-call-parser minimax_m2 \
-    --reasoning-parser minimax_m2_append_think \
-    --served-model-name minimax-m2.5 MiniMaxAI/MiniMax-M2.5 \
-    --compilation-config '{"cudagraph_mode": "PIECEWISE"}' \
-    > "$LOG" 2>&1 &
+# Build vllm command
+VLLM_CMD=(
+    "$VENV/bin/vllm" serve "$MODEL"
+    --host 0.0.0.0
+    --port "$PORT"
+    --tensor-parallel-size "$TP_SIZE"
+    --enable-expert-parallel
+    --trust-remote-code
+    --gpu-memory-utilization "$GPU_MEM"
+    --max-num-seqs "$MAX_SEQS"
+    --max-model-len 131072
+    --enable-prefix-caching
+    --enable-chunked-prefill
+    --enable-auto-tool-choice
+    --tool-call-parser minimax_m2
+    --reasoning-parser minimax_m2_append_think
+    --served-model-name minimax-m2.5 MiniMaxAI/MiniMax-M2.5
+    --compilation-config '{"cudagraph_mode": "PIECEWISE"}'
+)
+
+# Add DP if > 1
+if [ "$DP_SIZE" -gt 1 ]; then
+    VLLM_CMD+=(--data-parallel-size "$DP_SIZE")
+fi
+
+# Add swap space if configured
+if [ "$SWAP" -gt 0 ]; then
+    VLLM_CMD+=(--swap-space "$SWAP")
+fi
+
+nohup "${VLLM_CMD[@]}" > "$LOG" 2>&1 &
 
 PID=$!
 echo "$PID" > "$PID_FILE"
@@ -102,10 +130,8 @@ for i in $(seq 1 480); do
         tail -20 "$LOG"
         exit 1
     fi
-    HEALTH=$(curl -s http://localhost:${PORT}/health 2>/dev/null || echo "")
-    if [ "$HEALTH" = "" ]; then
-        :
-    elif echo "$HEALTH" | grep -q "ok\|200\|healthy"; then
+    HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:${PORT}/health 2>/dev/null || echo "000")
+    if [ "$HTTP_CODE" = "200" ]; then
         echo "Model loaded and ready!"
         echo "API: http://localhost:${PORT}/v1"
         exit 0

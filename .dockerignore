@@ -1,0 +1,17 @@
+.venv/
+.git/
+__pycache__/
+*.pyc
+*.egg-info/
+dist/
+build/
+node_modules/
+website/
+ios/
+tui/
+scripts/
+litellm-config.yaml
+litellm-config.example.yaml
+*.log
+*.pid
+.env

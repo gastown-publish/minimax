@@ -119,7 +119,7 @@ echo "=== GROUP 2: Help text for all commands ==="
 echo ""
 
 # 2.x Every command's --help must show "Usage:" and exit 0
-for cmd in run acp term auth setup list logs ps stop test tui serve launch completion; do
+for cmd in run acp term auth setup list logs ps stop test tui serve launch completion upgrade loop skills; do
     OUTPUT=$(mm $cmd --help 2>&1) || true
     if echo "$OUTPUT" | grep -q "Usage:"; then
         pass "mm $cmd --help"
@@ -522,6 +522,56 @@ if echo "$OUTPUT" | grep -qi "complete\|compdef\|_MM_COMPLETE\|_mm_completion\|C
     pass "mm completion bash — generates completion script"
 else
     fail "mm completion bash" "no completion output: $(echo "$OUTPUT" | head -3)"
+fi
+
+# 9B.9 Shell completion install subcommand exists
+OUTPUT=$(mm completion install --help 2>&1) || true
+if echo "$OUTPUT" | grep -q "Usage:"; then
+    pass "mm completion install --help"
+else
+    fail "mm completion install --help" "missing Usage: $OUTPUT"
+fi
+
+# 9B.10 mm upgrade command exists
+OUTPUT=$(mm upgrade --help 2>&1) || true
+if echo "$OUTPUT" | grep -q "Usage:"; then
+    pass "mm upgrade --help"
+else
+    fail "mm upgrade --help" "missing Usage: $OUTPUT"
+fi
+
+# 9B.11 Launch commands support --no-docker flag
+for tool in claude aider opencode openclaw codex nori kimi toad; do
+    OUTPUT=$(mm launch $tool --no-docker --help 2>&1) || true
+    if echo "$OUTPUT" | grep -q "Usage:\|no-docker"; then
+        pass "mm launch $tool --no-docker — flag accepted"
+    else
+        fail "mm launch $tool --no-docker" "flag not recognized: $OUTPUT"
+    fi
+done
+
+# 9B.12 mm loop command exists
+OUTPUT=$(mm loop --help 2>&1) || true
+if echo "$OUTPUT" | grep -q "Usage:"; then
+    pass "mm loop --help"
+else
+    fail "mm loop --help" "missing Usage: $OUTPUT"
+fi
+
+# 9B.13 mm skills list works
+OUTPUT=$(mm skills list 2>&1) || true
+if echo "$OUTPUT" | grep -qi "ralph-loop\|code-review\|Skills"; then
+    pass "mm skills list — shows bundled skills"
+else
+    fail "mm skills list" "no skills found: $OUTPUT"
+fi
+
+# 9B.14 mm skills run requires a skill name
+OUTPUT=$(mm skills run nonexistent 2>&1) || true
+if echo "$OUTPUT" | grep -qi "Unknown skill\|mm skills list"; then
+    pass "mm skills run — handles unknown skill"
+else
+    fail "mm skills run (unknown)" "unexpected: $OUTPUT"
 fi
 
 echo ""

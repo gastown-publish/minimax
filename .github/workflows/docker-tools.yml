@@ -1,0 +1,44 @@
+name: Build Tool Docker Images
+
+on:
+  schedule:
+    - cron: "0 6 * * *"  # Daily at 6am UTC
+  workflow_dispatch:
+
+permissions:
+  packages: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        tool:
+          - name: claude
+            file: docker/claude.Dockerfile
+          - name: codex
+            file: docker/codex.Dockerfile
+          - name: nori
+            file: docker/nori.Dockerfile
+          - name: kimi
+            file: docker/kimi.Dockerfile
+          - name: toad
+            file: docker/toad.Dockerfile
+    steps:
+      - uses: actions/checkout@v4
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build and push ${{ matrix.tool.name }}
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ${{ matrix.tool.file }}
+          push: true
+          tags: |
+            ghcr.io/gastown-publish/mm-${{ matrix.tool.name }}:latest
+            ghcr.io/gastown-publish/mm-${{ matrix.tool.name }}:${{ github.sha }}
