@@ -2,7 +2,10 @@
 # Build a .deb package for minimax-agent
 set -euo pipefail
 
-VERSION="0.2.0"
+# Version from env var (CI sets this from release tag) or pyproject.toml
+if [ -z "${VERSION:-}" ]; then
+    VERSION=$(grep '^version' pyproject.toml 2>/dev/null | head -1 | sed 's/.*"\(.*\)".*/\1/' || echo "0.0.0")
+fi
 PKG="minimax-agent"
 ARCH="all"  # Pure Python, architecture-independent
 WORKDIR=$(mktemp -d)
