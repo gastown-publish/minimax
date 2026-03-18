@@ -20,6 +20,12 @@ console = Console()
 # Isolated config dir for mm-launched Claude Code (separate from normal claude)
 MM_CLAUDE_CONFIG = os.path.expanduser("~/.mm-claude")
 
+# Docker images for tools that support them
+DOCKER_IMAGES = {
+    "aider": "paulgauthier/aider",
+    "openclaw": "ghcr.io/openclaw/openclaw:latest",
+}
+
 
 def _require_key() -> str:
     key = get_api_key()
@@ -27,6 +33,44 @@ def _require_key() -> str:
         console.print("[red]No API key set.[/] Run: mm auth login")
         raise SystemExit(1)
     return key
+
+
+def _has_docker() -> bool:
+    """Check if Docker is available."""
+    return shutil.which("docker") is not None
+
+
+def _docker_run(image: str, env: dict[str, str], extra_args: tuple = (),
+                volumes: list[str] | None = None, interactive: bool = True):
+    """Run a tool via Docker."""
+    cmd = ["docker", "run", "--rm"]
+    if interactive:
+        cmd += ["-it"]
+    # Mount current directory as workspace
+    cwd = os.getcwd()
+    cmd += ["-v", f"{cwd}:/app", "-w", "/app"]
+    # Mount home config dirs
+    home = str(Path.home())
+    cmd += ["-v", f"{home}/.gitconfig:/root/.gitconfig:ro"]
+    if os.path.exists(f"{home}/.ssh"):
+        cmd += ["-v", f"{home}/.ssh:/root/.ssh:ro"]
+    # Extra volumes
+    for v in (volumes or []):
+        cmd += ["-v", v]
+    # Environment variables
+    for k, v in env.items():
+        cmd += ["-e", f"{k}={v}"]
+    cmd.append(image)
+    cmd.extend(extra_args)
+
+    console.print(f"  [dim]Docker: {image}[/]")
+    console.print()
+    os.execvp("docker", cmd)
+
+
+def _find_binary(name: str) -> str | None:
+    """Find a binary, return None if not found."""
+    return shutil.which(name)
 
 
 def _require_binary(name: str, install_hint: str) -> str:
@@ -110,20 +154,18 @@ def launch():
 
     Each tool is configured with your MiniMax API key and
     launches with the correct endpoint and model settings.
+    Uses Docker when available, falls back to local install.
 
     \b
-    Recommended (full support):
+    Tools:
+        mm launch claude     # Claude Code (isolated config)
+        mm launch codex      # Codex CLI
+        mm launch aider      # Aider (Docker or local)
+        mm launch nori       # Nori TUI (wraps Claude Code)
         mm launch toad       # Toad TUI (via ACP, with tools)
-        mm launch codex      # Codex CLI (OpenAI compatible)
-        mm launch aider      # Aider (OpenAI compatible)
-        mm launch kimi       # Kimi CLI (OpenAI compatible)
-        mm launch openclaw   # OpenClaw (OpenAI compatible)
-        mm launch opencode   # OpenCode (OpenAI compatible)
-
-    \b
-    Limited (Anthropic API — may not connect):
-        mm launch claude     # Needs Anthropic API format
-        mm launch nori       # Wraps Claude Code
+        mm launch kimi       # Kimi CLI
+        mm launch openclaw   # OpenClaw (Docker or local)
+        mm launch opencode   # OpenCode
     """
 
 
@@ -132,20 +174,15 @@ def launch():
 def claude(extra_args: tuple):
     """Launch Claude Code with MiniMax-M2.5 (isolated config).
 
-    Note: Claude Code uses the Anthropic API protocol. MiniMax serves an
-    OpenAI-compatible API. Connection may fail. Use 'mm launch toad' or
-    'mm launch codex' for full compatibility.
+    Uses an Anthropic-compatible translation layer so Claude Code
+    can talk to MiniMax's API. Config is isolated from your normal
+    Claude Code installation.
     """
     key = _require_key()
     binary = _require_binary("claude", "npm install -g @anthropic-ai/claude-code")
 
-    console.print("[yellow]Note:[/] Claude Code uses Anthropic API format.")
-    console.print("  MiniMax serves OpenAI-compatible API — connection may fail.")
-    console.print("  For full support, use: [bold]mm launch toad[/] or [bold]mm launch codex[/]")
-    console.print()
-
     env = os.environ.copy()
-    # Claude Code uses ANTHROPIC_BASE_URL for API endpoint
+    # Claude Code uses ANTHROPIC_BASE_URL — LiteLLM translates at /v1/messages
     env["ANTHROPIC_BASE_URL"] = PUBLIC_API_BASE
     env["ANTHROPIC_API_KEY"] = key
     env["ANTHROPIC_AUTH_TOKEN"] = key
@@ -166,23 +203,34 @@ def claude(extra_args: tuple):
 @launch.command()
 @click.argument("extra_args", nargs=-1, type=click.UNPROCESSED)
 def aider(extra_args: tuple):
-    """Launch Aider with MiniMax-M2.5."""
+    """Launch Aider with MiniMax-M2.5.
+
+    Uses Docker (paulgauthier/aider) if available, otherwise local install.
+    """
     key = _require_key()
-    binary = _require_binary("aider", "pip install aider-chat")
 
-    # Write config file for persistent settings
-    _write_aider_config(key)
-
-    env = os.environ.copy()
-    env["OPENAI_API_BASE"] = PUBLIC_API_V1
-    env["OPENAI_API_KEY"] = key
-
-    args = [binary, "--model", f"openai/{DEFAULT_MODEL}"] + list(extra_args)
     console.print(f"[bold]Launching Aider[/] with MiniMax-M2.5...")
     console.print(f"  API: {PUBLIC_API_V1}")
     console.print(f"  Model: openai/{DEFAULT_MODEL}")
-    console.print()
-    os.execvpe(binary, args, env)
+
+    docker_env = {
+        "OPENAI_API_BASE": PUBLIC_API_V1,
+        "OPENAI_API_KEY": key,
+    }
+    docker_args = ("--model", f"openai/{DEFAULT_MODEL}") + extra_args
+
+    if _has_docker():
+        _docker_run(DOCKER_IMAGES["aider"], docker_env, docker_args)
+    else:
+        binary = _require_binary("aider", "pip install aider-chat")
+        _write_aider_config(key)
+
+        env = os.environ.copy()
+        env.update(docker_env)
+
+        args = [binary, "--model", f"openai/{DEFAULT_MODEL}"] + list(extra_args)
+        console.print()
+        os.execvpe(binary, args, env)
 
 
 @launch.command()
@@ -231,22 +279,42 @@ def opencode(extra_args: tuple):
 @launch.command()
 @click.argument("extra_args", nargs=-1, type=click.UNPROCESSED)
 def openclaw(extra_args: tuple):
-    """Launch OpenClaw with MiniMax-M2.5."""
+    """Launch OpenClaw with MiniMax-M2.5.
+
+    Uses Docker (ghcr.io/openclaw/openclaw) if available, otherwise local install.
+    Runs 'openclaw agent' for an interactive agent session.
+    """
     key = _require_key()
-    binary = _require_binary("openclaw", "pip install openclaw-cli")
 
-    env = os.environ.copy()
-    env["OPENAI_API_BASE"] = PUBLIC_API_V1
-    env["OPENAI_API_KEY"] = key
-    # OpenClaw reads model from OPENAI_MODEL env var
-    env["OPENAI_MODEL"] = f"minimax/{DEFAULT_MODEL}"
-
-    args = [binary] + list(extra_args)
     console.print(f"[bold]Launching OpenClaw[/] with MiniMax-M2.5...")
     console.print(f"  API: {PUBLIC_API_V1}")
     console.print(f"  Model: minimax/{DEFAULT_MODEL}")
-    console.print()
-    os.execvpe(binary, args, env)
+
+    oc_env = {
+        "OPENAI_API_BASE": PUBLIC_API_V1,
+        "OPENAI_API_KEY": key,
+        "OPENAI_MODEL": f"minimax/{DEFAULT_MODEL}",
+    }
+
+    if _has_docker() and not _find_binary("openclaw"):
+        # Docker: run openclaw agent with MiniMax
+        home = str(Path.home())
+        volumes = [f"{home}/.openclaw:/root/.openclaw"]
+        docker_args = extra_args if extra_args else ("agent",)
+        _docker_run(DOCKER_IMAGES["openclaw"], oc_env, docker_args, volumes=volumes)
+    else:
+        binary = _require_binary("openclaw", "pip install openclaw-cli")
+
+        env = os.environ.copy()
+        env.update(oc_env)
+
+        # Default to 'agent' subcommand if no args given
+        if extra_args:
+            args = [binary] + list(extra_args)
+        else:
+            args = [binary, "agent"]
+        console.print()
+        os.execvpe(binary, args, env)
 
 
 @launch.command()
@@ -254,17 +322,11 @@ def openclaw(extra_args: tuple):
 def nori(extra_args: tuple):
     """Launch Nori TUI with MiniMax-M2.5.
 
-    Note: Nori wraps Claude Code which uses the Anthropic API protocol.
-    MiniMax serves an OpenAI-compatible API. Connection will likely timeout.
-    Use 'mm launch toad' for the recommended TUI experience.
+    Nori wraps Claude Code. MiniMax API provides an Anthropic-compatible
+    translation layer so Nori works seamlessly.
     """
     key = _require_key()
     binary = _require_binary("nori", "npm install -g nori-ai-cli")
-
-    console.print("[yellow]Note:[/] Nori wraps Claude Code (Anthropic API format).")
-    console.print("  MiniMax serves OpenAI-compatible API — connection will likely timeout.")
-    console.print("  For full TUI support, use: [bold]mm launch toad[/]")
-    console.print()
 
     # Ensure senior-swe skillset is installed
     _ensure_senior_swe()

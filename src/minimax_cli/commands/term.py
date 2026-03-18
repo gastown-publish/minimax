@@ -1,55 +1,48 @@
-"""Nori TUI launcher — launches Nori with MiniMax API backend."""
+"""term — launch Toad TUI with MiniMax-M2.5 via ACP."""
 
 import os
 import shutil
-import subprocess
-import sys
 
 import click
+from rich.console import Console
 
 from ..config import get_api_key
-from ..constants import PUBLIC_API_BASE
+
+console = Console()
 
 
 @click.command()
-def term():
-    """Launch Nori TUI with MiniMax-M2.5."""
-    # Check if nori is installed
-    nori_bin = shutil.which("nori")
-    if not nori_bin:
-        click.echo("Nori is not installed. Installing...")
-        try:
-            # Try npm first (nori is distributed via npm)
-            npm_bin = shutil.which("npm")
-            if not npm_bin:
-                click.echo("npm not found. Install nori manually:")
-                click.echo("  npm install -g nori-ai-cli")
-                raise SystemExit(1)
-            subprocess.run(
-                [npm_bin, "install", "-g", "nori-ai-cli"],
-                check=True,
-            )
-            nori_bin = shutil.which("nori")
-            if not nori_bin:
-                click.echo("nori installed but not found in PATH.")
-                click.echo("Try: npm install -g nori-ai-cli")
-                raise SystemExit(1)
-        except subprocess.CalledProcessError:
-            click.echo("Failed to install nori. Install manually:")
-            click.echo("  npm install -g nori-ai-cli")
-            raise SystemExit(1)
+@click.argument("extra_args", nargs=-1, type=click.UNPROCESSED)
+def term(extra_args: tuple):
+    """Launch Toad TUI with MiniMax-M2.5.
 
-    # Install senior-swe skillset (shared with mm launch nori)
-    from .launch import _ensure_senior_swe
-    _ensure_senior_swe()
+    Toad connects to MiniMax via the ACP (Agent Client Protocol) server,
+    giving you a full terminal UI with tool execution (bash, file I/O, search).
 
-    # Get API key and set env vars for Claude Code backend
+    Requires: pip install batrachian-toad (Python 3.14+)
+    """
     key = get_api_key()
-    env = os.environ.copy()
-    if key:
-        env["ANTHROPIC_BASE_URL"] = PUBLIC_API_BASE
-        env["ANTHROPIC_API_KEY"] = key
-        env["ANTHROPIC_AUTH_TOKEN"] = key
+    if not key:
+        console.print("[red]No API key set.[/] Run: mm auth login")
+        raise SystemExit(1)
 
-    click.echo("Launching Nori TUI...")
-    os.execvpe(nori_bin, [nori_bin], env)
+    # Check if toad is installed
+    toad_bin = shutil.which("toad")
+    if not toad_bin:
+        console.print("[red]toad not found.[/] Install it first:")
+        console.print("  pip install batrachian-toad")
+        console.print()
+        console.print("[dim]Note: Toad requires Python 3.14+[/]")
+        raise SystemExit(1)
+
+    # Find mm binary for ACP backend
+    mm_bin = shutil.which("mm") or shutil.which("minimax")
+    if not mm_bin:
+        console.print("[red]mm binary not found in PATH[/]")
+        raise SystemExit(1)
+
+    # Launch toad with MiniMax ACP backend
+    args = [toad_bin, "acp", f"{mm_bin} acp", "-t", "MiniMax-M2.5"] + list(extra_args)
+    console.print("[bold]Launching Toad[/] with MiniMax-M2.5 (via ACP)...")
+    console.print()
+    os.execvp(toad_bin, args)

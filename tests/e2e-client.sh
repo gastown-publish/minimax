@@ -119,7 +119,7 @@ echo "=== GROUP 2: Help text for all commands ==="
 echo ""
 
 # 2.x Every command's --help must show "Usage:" and exit 0
-for cmd in run acp term loop skills auth setup list logs ps stop test tui serve launch completion; do
+for cmd in run acp term auth setup list logs ps stop test tui serve launch completion; do
     OUTPUT=$(mm $cmd --help 2>&1) || true
     if echo "$OUTPUT" | grep -q "Usage:"; then
         pass "mm $cmd --help"
@@ -131,7 +131,7 @@ for cmd in run acp term loop skills auth setup list logs ps stop test tui serve 
 done
 
 # 2.x2 Subcommand help
-for subcmd in "auth login" "auth status" "auth logout" "skills list" "skills run"; do
+for subcmd in "auth login" "auth status" "auth logout"; do
     OUTPUT=$(mm $subcmd --help 2>&1) || true
     if echo "$OUTPUT" | grep -q "Usage:"; then
         pass "mm $subcmd --help"
@@ -148,7 +148,7 @@ else
     fail "mm -h" "no Usage: in output"
 fi
 
-for cmd in run auth launch skills; do
+for cmd in run auth launch; do
     OUTPUT=$(mm $cmd -h 2>&1) || true
     if echo "$OUTPUT" | grep -q "Usage:"; then
         pass "mm $cmd -h"
@@ -287,35 +287,6 @@ else
 fi
 
 echo ""
-echo "=== GROUP 6: Skills ==="
-echo ""
-
-# 6.1 List skills
-OUTPUT=$(mm skills list 2>&1)
-if echo "$OUTPUT" | grep -q "code-review"; then
-    pass "mm skills list — shows code-review"
-else
-    fail "mm skills list" "missing code-review"
-fi
-
-# 6.2 Count skills (should be at least 8)
-SKILL_COUNT=$(mm skills list 2>&1 | grep -c "│" || echo 0)
-if [ "$SKILL_COUNT" -ge 8 ]; then
-    pass "mm skills list — $SKILL_COUNT skills found (>= 8)"
-else
-    fail "mm skills list count" "only $SKILL_COUNT skills"
-fi
-
-# 6.3 All 8 expected skills present
-for skill in code-review deep-research explain-code fix-tests git-commit ralph-loop refactor write-tests; do
-    if mm skills list 2>&1 | grep -q "$skill"; then
-        pass "skill present: $skill"
-    else
-        fail "skill missing: $skill" "not in skills list"
-    fi
-done
-
-echo ""
 echo "=== GROUP 7: Setup commands ==="
 echo ""
 
@@ -408,10 +379,10 @@ echo ""
 echo "=== GROUP 9: Term / ACP / Loop ==="
 echo ""
 
-# 9.1 term — should show nori not installed or try to install
+# 9.1 term — should show toad not installed or try to launch
 OUTPUT=$(mm term 2>&1) || true
-if echo "$OUTPUT" | grep -qi "not installed\|npm install\|nori\|Launching"; then
-    pass "mm term — handles nori installation"
+if echo "$OUTPUT" | grep -qi "not found\|not installed\|toad\|Launching\|batrachian"; then
+    pass "mm term — handles toad installation"
 else
     fail "mm term" "unexpected: $OUTPUT"
 fi
@@ -420,14 +391,6 @@ fi
 OUTPUT=$(timeout 3 mm acp 2>&1) || true
 # ACP server outputs JSON-RPC or starts listening — any output is OK
 pass "mm acp — starts without crash"
-
-# 9.3 loop --help
-OUTPUT=$(mm loop --help 2>&1)
-if echo "$OUTPUT" | grep -q "iterations"; then
-    pass "mm loop --help — shows iterations option"
-else
-    fail "mm loop --help" "missing iterations option"
-fi
 
 echo ""
 echo "=== GROUP 9B: Launch commands ==="
@@ -663,10 +626,7 @@ ALL_COMMANDS=(
     "tui"
     "term"
     "run --help"
-    "loop --help"
     "acp --help"
-    "skills list"
-    "skills run --help"
 )
 for cmd in "${ALL_COMMANDS[@]}"; do
     OUTPUT=$(mm $cmd 2>&1) || true

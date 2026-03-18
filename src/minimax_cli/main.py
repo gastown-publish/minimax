@@ -46,8 +46,6 @@ from .commands.auth import auth
 from .commands.setup import setup
 from .commands.term import term
 from .commands.acp_cmd import acp
-from .commands.loop import loop
-from .commands.skills_cmd import skills
 from .commands.launch import launch
 
 cli.add_command(run)
@@ -62,6 +60,4 @@ cli.add_command(auth)
 cli.add_command(setup)
 cli.add_command(term)
 cli.add_command(acp)
-cli.add_command(loop)
-cli.add_command(skills)
 cli.add_command(launch)
