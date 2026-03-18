@@ -20,16 +20,20 @@ console = Console()
 # Isolated config dir for mm-launched Claude Code (separate from normal claude)
 MM_CLAUDE_CONFIG = os.path.expanduser("~/.mm-claude")
 
+# Docker Hub namespace (public by default, no auth needed to pull)
+DOCKER_HUB = "thanakijwanavit"
+
 # Docker images for tools that support them
 DOCKER_IMAGES = {
     "aider": "paulgauthier/aider",
     "openclaw": "ghcr.io/openclaw/openclaw:latest",
-    "claude": "ghcr.io/gastown-publish/mm-claude:latest",
-    "opencode": "ghcr.io/anomalyco/opencode:latest",
-    "codex": "ghcr.io/gastown-publish/mm-codex:latest",
-    "nori": "ghcr.io/gastown-publish/mm-nori:latest",
-    "kimi": "ghcr.io/gastown-publish/mm-kimi:latest",
-    "toad": "ghcr.io/gastown-publish/mm-toad:latest",
+    "claude": f"{DOCKER_HUB}/mm-claude:latest",
+    "opencode": f"{DOCKER_HUB}/mm-opencode:latest",
+    "codex": f"{DOCKER_HUB}/mm-codex:latest",
+    "nori": f"{DOCKER_HUB}/mm-nori:latest",
+    "kimi": f"{DOCKER_HUB}/mm-kimi:latest",
+    "toad": f"{DOCKER_HUB}/mm-toad:latest",
+    "minimax": f"{DOCKER_HUB}/minimax:latest",
 }
 
 
@@ -122,9 +126,13 @@ def _ensure_senior_swe():
 
 def _write_codex_config(key: str):
     """Write Codex config file so it skips the login screen."""
+    from ..system_prompt import SYSTEM_PROMPT
+
     config_dir = Path.home() / ".codex"
     config_file = config_dir / "config.yaml"
+    instructions_file = config_dir / "instructions.md"
     config_dir.mkdir(parents=True, exist_ok=True)
+    instructions_file.write_text(SYSTEM_PROMPT)
     config_file.write_text(
         f"provider: openai\n"
         f"model: {DEFAULT_MODEL}\n"
@@ -140,10 +148,13 @@ def _write_opencode_config(cwd: str | None = None):
     to work around custom provider options bug (sst/opencode#5674).
     API key is passed via OPENAI_API_KEY env var.
     """
+    from ..system_prompt import SYSTEM_PROMPT
+
     target = Path(cwd or os.getcwd()) / "opencode.json"
     target.write_text(json.dumps({
         "$schema": "https://opencode.ai/config.json",
         "model": f"openai/{DEFAULT_MODEL}",
+        "instructions": SYSTEM_PROMPT,
         "provider": {
             "openai": {
                 "models": {
@@ -158,24 +169,36 @@ def _write_opencode_config(cwd: str | None = None):
 
 
 def _write_aider_config(key: str):
-    """Write Aider config file."""
+    """Write Aider config file with system prompt."""
+    from ..system_prompt import SYSTEM_PROMPT
+
     config_file = Path.home() / ".aider.conf.yml"
+    # Write system prompt to a file that aider can read
+    prompt_file = Path.home() / ".aider.system-prompt.md"
+    prompt_file.write_text(SYSTEM_PROMPT)
     config_file.write_text(
         f"openai-api-base: {PUBLIC_API_V1}\n"
         f"openai-api-key: {key}\n"
         f"model: openai/{DEFAULT_MODEL}\n"
+        f"read: [{prompt_file}]\n"
     )
 
 
 def _write_kimi_config(key: str):
-    """Write Kimi CLI config with MiniMax provider."""
+    """Write Kimi CLI config with MiniMax provider and system prompt."""
+    from ..system_prompt import SYSTEM_PROMPT
+
     config_dir = Path.home() / ".kimi"
     config_file = config_dir / "config.toml"
     config_dir.mkdir(parents=True, exist_ok=True)
 
+    # Escape the system prompt for TOML multiline string
+    escaped = SYSTEM_PROMPT.replace('\\', '\\\\').replace("'''", "\\'\\'\\'")
+
     config = (
         f'default_model = "{DEFAULT_MODEL}"\n'
         f'default_thinking = false\n'
+        f"system_prompt = '''\n{escaped}'''\n"
         f'\n'
         f'[models."{DEFAULT_MODEL}"]\n'
         f'provider = "minimax"\n'
@@ -199,7 +222,7 @@ def _ensure_claude_skills():
     has context about itself, available skills, and ecosystem.
     """
     from ..skills import SKILLS_DIR
-    from ..claude_md import CLAUDE_MD
+    from ..system_prompt import CLAUDE_SYSTEM_PROMPT as CLAUDE_MD
 
     # Claude Code always uses ~/.claude/skills/ regardless of CLAUDE_CONFIG_DIR
     target_dir = Path.home() / ".claude" / "skills"
@@ -282,11 +305,11 @@ def claude(no_docker: bool, extra_args: tuple):
         "CLAUDE_CONFIG_DIR": "/root/.mm-claude",
         "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1",
     }
-    from ..claude_md import CLAUDE_MD
+    from ..system_prompt import CLAUDE_SYSTEM_PROMPT
 
     docker_args = (
         "--model", DEFAULT_MODEL,
-        "--append-system-prompt", CLAUDE_MD,
+        "--append-system-prompt", CLAUDE_SYSTEM_PROMPT,
     ) + extra_args
 
     console.print(f"[bold]Launching Claude Code[/] with MiniMax-M2.5...")
@@ -308,7 +331,7 @@ def claude(no_docker: bool, extra_args: tuple):
         env.pop("ANTHROPIC_AUTH_TOKEN", None)
 
         args = [binary, "--model", DEFAULT_MODEL,
-                "--append-system-prompt", CLAUDE_MD] + list(extra_args)
+                "--append-system-prompt", CLAUDE_SYSTEM_PROMPT] + list(extra_args)
         console.print()
         os.execvpe(binary, args, env)
 
