@@ -133,22 +133,23 @@ def _write_codex_config(key: str):
     )
 
 
-def _write_opencode_config(key: str, cwd: str | None = None):
-    """Write OpenCode project config (opencode.json) in cwd."""
+def _write_opencode_config(cwd: str | None = None):
+    """Write OpenCode project config (opencode.json) in cwd.
+
+    Uses the built-in openai provider with OPENAI_BASE_URL env var
+    to work around custom provider options bug (sst/opencode#5674).
+    API key is passed via OPENAI_API_KEY env var.
+    """
     target = Path(cwd or os.getcwd()) / "opencode.json"
     target.write_text(json.dumps({
         "$schema": "https://opencode.ai/config.json",
+        "model": f"openai/{DEFAULT_MODEL}",
         "provider": {
-            "minimax": {
-                "npm": "@ai-sdk/openai-compatible",
-                "name": "MiniMax",
-                "options": {
-                    "baseURL": PUBLIC_API_V1,
-                    "apiKey": "{env:OPENAI_API_KEY}",
-                },
+            "openai": {
                 "models": {
                     DEFAULT_MODEL: {
                         "name": "MiniMax-M2.5",
+                        "limit": {"context": 128000, "output": 16384},
                     }
                 },
             }
@@ -172,16 +173,14 @@ def _write_kimi_config(key: str):
     config_file = config_dir / "config.toml"
     config_dir.mkdir(parents=True, exist_ok=True)
 
-    # Only write if no config exists, or patch existing
     config = (
         f'default_model = "{DEFAULT_MODEL}"\n'
-        f'default_thinking = true\n'
+        f'default_thinking = false\n'
         f'\n'
         f'[models."{DEFAULT_MODEL}"]\n'
         f'provider = "minimax"\n'
         f'model = "{DEFAULT_MODEL}"\n'
         f'max_context_size = 131072\n'
-        f'capabilities = ["thinking"]\n'
         f'\n'
         f'[providers."minimax"]\n'
         f'type = "openai_legacy"\n'
@@ -382,22 +381,21 @@ def opencode(no_docker: bool, extra_args: tuple):
 
     docker_env = {
         "OPENAI_API_KEY": key,
+        "OPENAI_BASE_URL": PUBLIC_API_V1,
     }
-    model_arg = f"minimax/{DEFAULT_MODEL}"
 
     if _has_docker() and not no_docker:
-        # Write project-level opencode.json in cwd
-        _write_opencode_config(key)
-        _docker_run(DOCKER_IMAGES["opencode"], docker_env,
-                    ("--model", model_arg) + extra_args)
+        # Write project-level opencode.json in cwd — model set there
+        _write_opencode_config()
+        _docker_run(DOCKER_IMAGES["opencode"], docker_env, extra_args)
     else:
-        binary = _require_binary("opencode", "go install github.com/opencode-ai/opencode@latest")
-        _write_opencode_config(key)
+        binary = _require_binary("opencode", "curl -fsSL https://opencode.ai/install | bash")
+        _write_opencode_config()
 
         env = os.environ.copy()
         env.update(docker_env)
 
-        args = [binary, "--model", model_arg] + list(extra_args)
+        args = [binary] + list(extra_args)
         console.print()
         os.execvpe(binary, args, env)
 
