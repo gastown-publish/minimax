@@ -38,7 +38,7 @@ Your MiniMax-M2.5 deployment exposes multiple endpoints:
 |----------|----------------|----------|
 | `http://localhost:8080/v1` | None | Direct vLLM access (local only) |
 | `http://localhost:4000/v1` | API Key required | LiteLLM proxy with cost tracking |
-| `https://gpu-workspace.taile8dc37.ts.net/minimax/v1` | API Key required | Public Tailscale endpoint |
+| `https://api.minimax.villamarket.ai/v1` | API Key required | Public API endpoint |
 
 **Recommendation**: Use `http://localhost:8080/v1` for local OpenClaw setup (fastest, no auth overhead).
 

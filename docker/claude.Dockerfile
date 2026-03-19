@@ -14,6 +14,19 @@ RUN npx -y @anthropic-ai/claude-code mcp add playwright -- npx @anthropic-ai/mcp
 # Install nori senior-swe skillset (skills for Claude Code)
 RUN nori-skillsets install senior-swe --non-interactive 2>/dev/null || true
 
+# claude-mem — persistent memory across sessions
+RUN git clone --depth 1 https://github.com/thedotmack/claude-mem.git \
+        /root/.claude/plugins/marketplaces/thedotmack \
+    && cd /root/.claude/plugins/marketplaces/thedotmack/plugin \
+    && npm install --production 2>/dev/null || true \
+    && mkdir -p /root/.claude/plugins/cache/thedotmack/claude-mem/latest \
+    && cp -r /root/.claude/plugins/marketplaces/thedotmack/plugin/* \
+             /root/.claude/plugins/cache/thedotmack/claude-mem/latest/ \
+    && printf '{"version":2,"plugins":{"claude-mem@thedotmack":[{"scope":"user","installPath":"/root/.claude/plugins/cache/thedotmack/claude-mem/latest","version":"latest","installedAt":"2026-01-01T00:00:00.000Z","lastUpdated":"2026-01-01T00:00:00.000Z"}]}}\n' \
+        > /root/.claude/plugins/installed_plugins.json \
+    && printf '{"thedotmack":{"source":{"source":"github","repo":"thedotmack/claude-mem"},"installLocation":"/root/.claude/plugins/marketplaces/thedotmack","lastUpdated":"2026-01-01T00:00:00.000Z"}}\n' \
+        > /root/.claude/plugins/known_marketplaces.json
+
 # Install mm CLI (for mm loop, mm acp, etc.)
 RUN pip install --no-cache-dir --break-system-packages minimax-agent || true
 

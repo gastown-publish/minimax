@@ -16,7 +16,7 @@
 ## Install
 
 ```bash
-curl -fsSL https://minimax.villamarket.ai/install | bash
+curl -fsSL minimax.villamarket.ai/install | sh
 ```
 
 Or with pip:

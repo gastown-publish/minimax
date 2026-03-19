@@ -77,7 +77,7 @@ def _send_key_email(email: str, api_key: str, alias: str = "") -> str | None:
     from email.mime.text import MIMEText
 
     sender = "noreply@villamarket.ai"
-    public_base = "https://gpu-workspace.taile8dc37.ts.net/minimax/v1"
+    public_base = "https://api.minimax.villamarket.ai/v1"
     subject = "Your MiniMax-M2.5 API Key"
     body = (
         f"Hi{' ' + alias if alias else ''},\n\n"

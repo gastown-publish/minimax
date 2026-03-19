@@ -19,7 +19,7 @@ PASS=0
 FAIL=0
 WARN=0
 
-TS="https://gpu-workspace.taile8dc37.ts.net"
+TS="https://api.minimax.villamarket.ai"
 SITE="https://minimax.villamarket.ai"
 API="https://api.minimax.villamarket.ai"
 
@@ -70,8 +70,8 @@ echo -e "${BOLD}║        MiniMax Tools & API Test Suite        ║${NC}"
 echo -e "${BOLD}╚══════════════════════════════════════════════╝${NC}"
 echo ""
 
-# ─── Tools via Tailscale Funnel ───
-echo -e "${CYAN}[1/5] Tools — Tailscale Funnel${NC}"
+# ─── Tools via Public URLs ───
+echo -e "${CYAN}[1/5] Tools — Public URLs${NC}"
 check "Dify (:8443)"                 "${TS}:8443/"           "200"
 check "SearXNG (/minimax-search)"    "${TS}/minimax-search"  "200"
 check "DeerFlow (:10000)"           "${TS}:10000/"           "200"

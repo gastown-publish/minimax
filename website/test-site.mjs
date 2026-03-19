@@ -3,7 +3,7 @@ import { execSync } from 'child_process';
 
 const BASE = 'https://minimax.villamarket.ai';
 const API_BASE = 'https://api.minimax.villamarket.ai';
-const LITELLM_BASE = 'https://gpu-workspace.taile8dc37.ts.net/minimax';
+const LITELLM_BASE = 'https://api.minimax.villamarket.ai';
 const COGNITO_CLIENT_ID = 'ac6n9a2dijabmemnk19qa62bu';
 const TEST_EMAIL = 'test@minimax.villamarket.ai';
 const TEST_PASSWORD = 'TestPass99';

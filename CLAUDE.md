@@ -12,7 +12,7 @@ This repo manages the MiniMax-M2.5 platform: inference server, website, chat UI,
                     ┌─────────────────────────────────────┐
                     │  app.minimax.villamarket.ai (Chat)   │
                     │  CloudFront E7MNC26N70Y7Z            │
-                    │  → Tailscale Funnel :10000           │
+                    │  → CloudFront → Funnel :10000        │
                     │  → DeerFlow (Docker)                 │
                     └───────────┬─────────────────────────┘
                                 │

@@ -7,7 +7,7 @@ const TOOLS = [
     name: "Dify",
     description:
       "AI workflow builder — create agents, RAG pipelines, and automations",
-    url: "https://gpu-workspace.taile8dc37.ts.net:8443",
+    url: "https://app.minimax.villamarket.ai/dify",
     icon: Blocks,
     color: "text-indigo-400",
     bg: "bg-indigo-500/10",
@@ -16,7 +16,7 @@ const TOOLS = [
   {
     name: "SearXNG",
     description: "Private meta-search engine with proxy rotation",
-    url: "https://gpu-workspace.taile8dc37.ts.net/minimax-search",
+    url: "https://app.minimax.villamarket.ai/search",
     icon: Search,
     color: "text-emerald-400",
     bg: "bg-emerald-500/10",
@@ -26,7 +26,7 @@ const TOOLS = [
     name: "DeerFlow",
     description:
       "Deep research agent — automated multi-step investigations",
-    url: "https://gpu-workspace.taile8dc37.ts.net:10000",
+    url: "https://app.minimax.villamarket.ai",
     icon: FlaskConical,
     color: "text-amber-400",
     bg: "bg-amber-500/10",
@@ -36,7 +36,7 @@ const TOOLS = [
     name: "OpenClaw",
     description:
       "Autonomous AI agent — browse the web, run commands, manage files, and integrate with messaging platforms",
-    url: "https://gpu-workspace.taile8dc37.ts.net:18790/?token=1462622eeca9b1fc9a266e3d181ccb8abd54f6042e60dc6fbe6b77d54e382442",
+    url: "https://app.minimax.villamarket.ai/openclaw",
     icon: Bot,
     color: "text-purple-400",
     bg: "bg-purple-500/10",
