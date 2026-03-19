@@ -1,6 +1,6 @@
-# MiniMax-M2.5
+# mm — MiniMax-M2.5 CLI
 
-[MiniMax-M2.5](https://huggingface.co/MiniMaxAI/MiniMax-M2.5) inference platform — 456B MoE model on 8x NVIDIA H100 80GB GPUs.
+AI coding agent powered by [MiniMax-M2.5](https://huggingface.co/MiniMaxAI/MiniMax-M2.5) — 456B MoE model on 8x NVIDIA H100 80GB GPUs.
 
 **Website**: [minimax.villamarket.ai](https://minimax.villamarket.ai)
 **Chat**: [app.minimax.villamarket.ai](https://app.minimax.villamarket.ai)
@@ -246,7 +246,7 @@ Pre-built Docker images with full AI toolchain on [Docker Hub](https://hub.docke
 | `thanakijwanavit/mm-gasclaw` | Gasclaw (multi-agent) |
 | `thanakijwanavit/minimax` | mm CLI |
 
-Every image includes: Claude Code, Nori, nori-skillsets (senior-swe), Playwright MCP, mm CLI, bundled skills, and system prompts.
+Every image includes: Claude Code, Nori, nori-skillsets (senior-swe), Playwright MCP, claude-mem, mm CLI, bundled skills, and system prompts.
 
 ```bash
 docker run --rm -it -e MINIMAX_API_KEY=sk-xxx thanakijwanavit/mm-claude:latest

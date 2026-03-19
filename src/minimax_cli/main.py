@@ -103,13 +103,10 @@ def completion_install():
 
 @cli.command("upgrade")
 def upgrade():
-    """Upgrade mm to the latest version from GitHub Releases."""
+    """Upgrade mm to the latest version by re-running the install script."""
     import json
     import subprocess
-    import sys
-    import tempfile
     import urllib.request
-    from pathlib import Path
 
     repo = "gastown-publish/minimax"
     click.echo("Checking for updates...")
@@ -128,35 +125,19 @@ def upgrade():
         click.echo(f"Already up to date (v{__version__}).")
         return
 
-    # Find wheel URL
-    wheel_url = None
-    for asset in data.get("assets", []):
-        if asset["name"].endswith(".whl"):
-            wheel_url = asset["browser_download_url"]
-            break
-
-    if not wheel_url:
-        click.echo(f"No wheel found in release {tag}. Check: https://github.com/{repo}/releases", err=True)
-        raise SystemExit(1)
-
     click.echo(f"Upgrading mm {__version__} → {latest}...")
 
-    # Download and install wheel
-    with tempfile.TemporaryDirectory() as tmpdir:
-        wheel_path = Path(tmpdir) / Path(wheel_url).name
-        urllib.request.urlretrieve(wheel_url, wheel_path)
-
-        result = subprocess.run(
-            [sys.executable, "-m", "pip", "install", "--force-reinstall", str(wheel_path)],
-            capture_output=True,
-            text=True,
-        )
+    # Re-run the install script — it handles venv, wheel download, and symlinking
+    result = subprocess.run(
+        ["sh", "-c", "curl -fsSL minimax.villamarket.ai/install | sh"],
+        text=True,
+    )
 
     if result.returncode == 0:
         click.echo(f"Upgraded to mm {latest}")
-        click.echo("Restart your shell to use the new version.")
     else:
-        click.echo(f"Upgrade failed:\n{result.stderr.strip()}", err=True)
+        click.echo("Upgrade failed. Try manually:", err=True)
+        click.echo("  curl -fsSL minimax.villamarket.ai/install | sh", err=True)
         raise SystemExit(1)
 
 
