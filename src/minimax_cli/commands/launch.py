@@ -34,6 +34,7 @@ DOCKER_IMAGES = {
     "kimi": f"{DOCKER_HUB}/mm-kimi:latest",
     "toad": f"{DOCKER_HUB}/mm-toad:latest",
     "minimax": f"{DOCKER_HUB}/minimax:latest",
+    "gasclaw": f"{DOCKER_HUB}/gasclaw:latest",
 }
 
 
@@ -596,3 +597,164 @@ def kimi(no_docker: bool, extra_args: tuple):
         args = [binary, "--model", DEFAULT_MODEL] + list(extra_args)
         console.print()
         os.execvpe(binary, args, env)
+
+
+GASCLAW_COMPOSE = """\
+services:
+  gasclaw:
+    image: {image}
+    container_name: gasclaw
+    ports:
+      - "{gateway_port}:18789"
+    volumes:
+      - {project_dir}:/project
+      - gasclaw-openclaw:/root/.openclaw
+      - gasclaw-dolt:/root/.dolt
+      - gasclaw-state:/root/.gasclaw
+      - gasclaw-claude:/root/.claude-config
+      - gasclaw-workspace:/workspace
+    environment:
+      - GASTOWN_KIMI_KEYS={api_key}
+      - OPENCLAW_KIMI_KEY={api_key}
+      - TELEGRAM_BOT_TOKEN={telegram_bot_token}
+      - TELEGRAM_OWNER_ID={telegram_owner_id}
+      - ANTHROPIC_BASE_URL={api_base}
+      - GT_AGENT_COUNT={agent_count}
+    restart: unless-stopped
+
+volumes:
+  gasclaw-openclaw:
+  gasclaw-dolt:
+  gasclaw-state:
+  gasclaw-claude:
+  gasclaw-workspace:
+"""
+
+
+def _write_gasclaw_compose(
+    key: str,
+    *,
+    telegram_bot_token: str,
+    telegram_owner_id: str,
+    project_dir: str | None = None,
+    gateway_port: int = 18789,
+    agent_count: int = 6,
+) -> Path:
+    """Write docker-compose.gasclaw.yml for running Gasclaw with MiniMax."""
+    compose_file = Path.home() / ".mm-gasclaw" / "docker-compose.yml"
+    compose_file.parent.mkdir(parents=True, exist_ok=True)
+
+    content = GASCLAW_COMPOSE.format(
+        image=DOCKER_IMAGES.get("gasclaw", f"{DOCKER_HUB}/gasclaw:latest"),
+        api_key=key,
+        api_base=PUBLIC_API_BASE,
+        telegram_bot_token=telegram_bot_token,
+        telegram_owner_id=telegram_owner_id,
+        project_dir=project_dir or os.getcwd(),
+        gateway_port=gateway_port,
+        agent_count=agent_count,
+    )
+    compose_file.write_text(content)
+    return compose_file
+
+
+@launch.command()
+@click.option("--telegram-bot-token", envvar="TELEGRAM_BOT_TOKEN",
+              help="Telegram bot token (from @BotFather).")
+@click.option("--telegram-owner-id", envvar="TELEGRAM_OWNER_ID",
+              help="Telegram user ID (numeric).")
+@click.option("--project", "-p", default=None,
+              help="Project directory to mount (default: cwd).")
+@click.option("--agents", default=6, show_default=True,
+              help="Number of crew workers.")
+@click.option("--port", default=18789, show_default=True,
+              help="Gateway port.")
+@click.option("--stop", "do_stop", is_flag=True, help="Stop running Gasclaw.")
+@click.option("--logs", "do_logs", is_flag=True, help="Show Gasclaw logs.")
+@click.option("--status", "do_status", is_flag=True, help="Show Gasclaw status.")
+def gasclaw(telegram_bot_token, telegram_owner_id, project, agents, port,
+            do_stop, do_logs, do_status):
+    """Launch Gasclaw multi-agent orchestration with MiniMax-M2.5.
+
+    Gasclaw runs Gastown (agent coordination) + OpenClaw (Telegram oversight)
+    in a single Docker container, using MiniMax-M2.5 as the LLM backend.
+
+    \b
+    First run:
+        mm launch gasclaw --telegram-bot-token TOKEN --telegram-owner-id ID
+
+    \b
+    Management:
+        mm launch gasclaw --stop     Stop Gasclaw
+        mm launch gasclaw --logs     View logs
+        mm launch gasclaw --status   Show status
+    """
+    compose_dir = Path.home() / ".mm-gasclaw"
+    compose_file = compose_dir / "docker-compose.yml"
+
+    # Management subcommands (don't need API key)
+    if do_stop:
+        if not compose_file.exists():
+            console.print("[red]Gasclaw not initialized.[/] Run: mm launch gasclaw")
+            raise SystemExit(1)
+        os.execvp("docker", ["docker", "compose", "-f", str(compose_file), "down"])
+
+    if do_logs:
+        if not compose_file.exists():
+            console.print("[red]Gasclaw not initialized.[/]")
+            raise SystemExit(1)
+        os.execvp("docker", ["docker", "compose", "-f", str(compose_file), "logs", "-f"])
+
+    if do_status:
+        if not compose_file.exists():
+            console.print("[red]Gasclaw not initialized.[/]")
+            raise SystemExit(1)
+        os.execvp("docker", ["docker", "compose", "-f", str(compose_file), "ps"])
+
+    # Starting Gasclaw — need key and Telegram config
+    key = _require_key()
+
+    if not _has_docker():
+        console.print("[red]Docker is required for Gasclaw.[/]")
+        raise SystemExit(1)
+
+    # Check for Telegram config
+    if not telegram_bot_token:
+        # Check if compose file exists (reuse existing config)
+        if compose_file.exists():
+            console.print("[bold]Starting Gasclaw[/] (using existing config)...")
+            os.execvp("docker", [
+                "docker", "compose", "-f", str(compose_file), "up", "-d",
+            ])
+        console.print("[red]Telegram bot token required.[/]")
+        console.print("  mm launch gasclaw --telegram-bot-token TOKEN --telegram-owner-id ID")
+        console.print("")
+        console.print("Get a bot token from @BotFather on Telegram.")
+        raise SystemExit(1)
+
+    if not telegram_owner_id:
+        console.print("[red]Telegram owner ID required.[/]")
+        console.print("  Get your ID from @userinfobot on Telegram.")
+        raise SystemExit(1)
+
+    # Write compose file and start
+    compose_path = _write_gasclaw_compose(
+        key,
+        telegram_bot_token=telegram_bot_token,
+        telegram_owner_id=telegram_owner_id,
+        project_dir=project,
+        gateway_port=port,
+        agent_count=agents,
+    )
+
+    console.print(f"[bold]Launching Gasclaw[/] with MiniMax-M2.5...")
+    console.print(f"  API: {PUBLIC_API_BASE}")
+    console.print(f"  Agents: {agents}")
+    console.print(f"  Gateway: http://localhost:{port}")
+    console.print(f"  Project: {project or os.getcwd()}")
+    console.print(f"  Config: {compose_path}")
+    console.print()
+
+    os.execvp("docker", [
+        "docker", "compose", "-f", str(compose_path), "up", "-d",
+    ])

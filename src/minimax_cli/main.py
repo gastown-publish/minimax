@@ -103,20 +103,57 @@ def completion_install():
 
 @cli.command("upgrade")
 def upgrade():
-    """Upgrade mm to the latest version."""
+    """Upgrade mm to the latest version from GitHub Releases."""
+    import json
     import subprocess
     import sys
+    import tempfile
+    import urllib.request
+    from pathlib import Path
 
-    click.echo("Upgrading mm (minimax-agent)...")
-    result = subprocess.run(
-        [sys.executable, "-m", "pip", "install", "--upgrade", "minimax-agent"],
-        capture_output=True,
-        text=True,
-    )
+    repo = "gastown-publish/minimax"
+    click.echo("Checking for updates...")
+
+    try:
+        url = f"https://api.github.com/repos/{repo}/releases/latest"
+        req = urllib.request.Request(url, headers={"Accept": "application/vnd.github+json"})
+        data = json.loads(urllib.request.urlopen(req, timeout=15).read())
+        tag = data.get("tag_name", "")
+        latest = tag.lstrip("v")
+    except Exception as e:
+        click.echo(f"Failed to check for updates: {e}", err=True)
+        raise SystemExit(1)
+
+    if latest == __version__:
+        click.echo(f"Already up to date (v{__version__}).")
+        return
+
+    # Find wheel URL
+    wheel_url = None
+    for asset in data.get("assets", []):
+        if asset["name"].endswith(".whl"):
+            wheel_url = asset["browser_download_url"]
+            break
+
+    if not wheel_url:
+        click.echo(f"No wheel found in release {tag}. Check: https://github.com/{repo}/releases", err=True)
+        raise SystemExit(1)
+
+    click.echo(f"Upgrading mm {__version__} → {latest}...")
+
+    # Download and install wheel
+    with tempfile.TemporaryDirectory() as tmpdir:
+        wheel_path = Path(tmpdir) / Path(wheel_url).name
+        urllib.request.urlretrieve(wheel_url, wheel_path)
+
+        result = subprocess.run(
+            [sys.executable, "-m", "pip", "install", "--force-reinstall", str(wheel_path)],
+            capture_output=True,
+            text=True,
+        )
+
     if result.returncode == 0:
-        # Show the new version
-        from . import __version__
-        click.echo(f"Upgraded to mm {__version__}")
+        click.echo(f"Upgraded to mm {latest}")
         click.echo("Restart your shell to use the new version.")
     else:
         click.echo(f"Upgrade failed:\n{result.stderr.strip()}", err=True)
