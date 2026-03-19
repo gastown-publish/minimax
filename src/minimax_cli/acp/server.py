@@ -34,9 +34,10 @@ from acp.schema import (
 )
 from openai import AsyncOpenAI
 
+from .. import __version__
 from ..config import get_api_key
 from ..api import _base_url
-from ..constants import DEFAULT_MODEL
+from ..constants import DEFAULT_MODEL, PUBLIC_API_V1
 from ..skills import list_skills, load_skill
 
 # ── System prompt ────────────────────────────────────────────────────────
@@ -294,10 +295,16 @@ class MiniMaxAgent:
 
     def __init__(self) -> None:
         api_key = get_api_key()
+        if not api_key:
+            import sys
+            print("Error: No API key set. Run: mm auth login", file=sys.stderr)
+            sys.exit(1)
+        # Remote users always use the public API
         base = _base_url(api_key)
         self.client = AsyncOpenAI(
             base_url=f"{base}/v1",
-            api_key=api_key or "none",
+            api_key=api_key,
+            timeout=60.0,
         )
         self.sessions: dict[str, list[dict]] = {}
         self.session_cwd: dict[str, str] = {}
@@ -315,7 +322,7 @@ class MiniMaxAgent:
     ) -> InitializeResponse:
         return InitializeResponse(
             protocol_version=PROTOCOL_VERSION,
-            agent_info=Implementation(name="mm", version="0.2.4"),
+            agent_info=Implementation(name="mm", version=__version__),
             agent_capabilities=AgentCapabilities(),
         )
 
@@ -389,12 +396,21 @@ class MiniMaxAgent:
 
         # Agent loop: call model → execute tools → repeat until done
         for _round in range(MAX_TOOL_ROUNDS):
-            response = await self.client.chat.completions.create(
-                model=DEFAULT_MODEL,
-                messages=self.sessions[session_id],
-                tools=TOOLS,
-                max_tokens=8192,
-            )
+            try:
+                response = await self.client.chat.completions.create(
+                    model=DEFAULT_MODEL,
+                    messages=self.sessions[session_id],
+                    tools=TOOLS,
+                    max_tokens=8192,
+                )
+            except Exception as e:
+                error_msg = f"API error: {e}"
+                await self._send_text(session_id, f"\n\n**{error_msg}**\n\nCheck that the MiniMax API is running and your key is valid (`mm auth status`).")
+                self.sessions[session_id].append({
+                    "role": "assistant",
+                    "content": error_msg,
+                })
+                return PromptResponse(stop_reason="end_turn")
 
             choice = response.choices[0]
             message = choice.message
