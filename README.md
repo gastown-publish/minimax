@@ -1,162 +1,64 @@
 # MiniMax-M2.5
 
-Self-hosted [MiniMax-M2.5](https://huggingface.co/MiniMaxAI/MiniMax-M2.5) inference platform running on 8x NVIDIA H100 80GB GPUs.
+[MiniMax-M2.5](https://huggingface.co/MiniMaxAI/MiniMax-M2.5) inference platform — 456B MoE model on 8x NVIDIA H100 80GB GPUs.
 
 **Website**: [minimax.villamarket.ai](https://minimax.villamarket.ai)
 **Chat**: [app.minimax.villamarket.ai](https://app.minimax.villamarket.ai)
-
-| Component | Description |
-|-----------|-------------|
-| **vLLM** (port 8080) | Model inference server (TP8 + expert parallel) |
-| **LiteLLM** (port 4000) | API proxy with key management and cost tracking |
-| **Website** | Landing page, API docs, dashboard, auth (Next.js + S3 + CloudFront) |
-| **DeerFlow** | AI agent chat UI at `app.minimax.villamarket.ai` (Next.js + LangGraph) |
-| **CLI** | Ollama-style CLI for managing the server |
-| **TUI** | Terminal UI for API key management |
-| **iOS App** | Native Swift app (in development) |
-
----
-
-## Project Structure
-
-```
-.
-├── scripts/                  # Server management scripts
-│   ├── start.sh              # Start vLLM server
-│   ├── start-all.sh          # Start vLLM + LiteLLM
-│   ├── stop.sh               # Stop vLLM
-│   ├── stop-all.sh           # Stop everything
-│   ├── health.sh             # Health check
-│   ├── test.sh               # Inference test
-│   ├── test-tools.sh         # Tool calling test
-│   └── download-model.sh     # Download model from HuggingFace
-├── src/minimax_cli/          # CLI source code
-│   ├── main.py               # Entry point
-│   ├── api.py                # API client
-│   ├── config.py             # Configuration
-│   ├── constants.py          # Constants
-│   └── commands/             # CLI subcommands
-├── tui/                      # Admin TUI (Textual)
-│   └── app.py                # Key management interface
-├── website/                  # minimax.villamarket.ai
-│   ├── src/                  # Next.js source
-│   │   ├── app/              # App Router pages
-│   │   ├── components/       # React components
-│   │   └── lib/              # Utilities + auth
-│   ├── lambda/               # AWS Lambda functions
-│   │   ├── keys.py           # API key generation
-│   │   ├── checkout.py       # Stripe checkout
-│   │   ├── stripe_webhook.py # Stripe webhooks
-│   │   ├── promo.py          # Promo codes
-│   │   └── referral.py       # Referral system
-│   ├── cf-function.js        # CloudFront Function
-│   └── deploy.sh             # Build + deploy to S3/CloudFront
-├── ios/                      # iOS app (Swift)
-│   ├── MiniMaxApp/           # App source
-│   │   ├── App/              # Entry point + state
-│   │   ├── Core/API/         # SSE streaming + LangGraph client
-│   │   ├── Core/Models/      # Data models
-│   │   └── Features/         # Chat, Threads, Settings views
-│   └── Package.swift         # Swift Package manifest
-├── litellm-config.example.yaml
-├── admin                     # Symlink to TUI launcher
-├── pyproject.toml            # Python package config
-├── CLAUDE.md                 # AI agent instructions
-└── README.md                 # This file
-```
-
----
-
-## CLI
-
-Ollama-style CLI for managing the server and chatting with the model.
-
-### Install
-
-```bash
-pip install -e .
-```
-
-### Commands
-
-```
-minimax run                 Interactive chat REPL with streaming + think blocks
-minimax serve               Start full stack (vLLM + LiteLLM)
-minimax serve --vllm-only   Start vLLM only
-minimax stop                Stop all servers
-minimax ps                  Show running processes, GPU usage, uptime
-minimax list                List available models
-minimax logs                Tail vLLM logs (--litellm for LiteLLM)
-minimax test                Run inference health checks
-minimax tui                 Launch admin TUI (key management)
-minimax auth login          Store API key
-minimax auth status         Check auth status
-minimax auth logout         Remove stored key
-minimax setup claude        Configure Claude Code
-minimax setup codex         Configure Codex CLI
-minimax setup aider         Configure Aider
-minimax setup continue      Configure Continue (VS Code/JetBrains)
-minimax setup cline         Print Cline setup instructions
-```
-
-### Quick Start
-
-```bash
-# Start the server
-minimax serve
-
-# Check status
-minimax ps
-
-# Start chatting
-minimax run
-
-# Configure Claude Code to use this server
-minimax auth login
-minimax setup claude
-```
-
----
-
-## Benchmarks
+**API**: `https://api.minimax.villamarket.ai/v1`
 
 | Benchmark | Score |
 |-----------|-------|
 | SWE-Bench Verified | **80.2%** |
 | Multi-SWE-Bench | **51.3%** |
 
-## API Endpoint
-
-```
-https://gpu-workspace.taile8dc37.ts.net/minimax/v1
-```
-
-All requests require an API key:
-
-```
-Authorization: Bearer YOUR_API_KEY
-```
-
-## Models
-
-| Model ID | Context | Description |
-|----------|---------|-------------|
-| `minimax-m2.5` | 128K | Recommended |
-| `MiniMaxAI/MiniMax-M2.5` | 128K | Full name alias |
-
-## Pricing
-
-| | Price |
-|---|---|
-| Input | $0.30 / 1M tokens |
-| Output | $1.20 / 1M tokens |
-
 ---
+
+## Install
+
+```bash
+curl -fsSL https://minimax.villamarket.ai/install | bash
+```
+
+Or with pip:
+
+```bash
+pip install minimax-agent
+```
 
 ## Quick Start
 
 ```bash
-curl https://gpu-workspace.taile8dc37.ts.net/minimax/v1/chat/completions \
+# Authenticate
+mm auth login
+
+# Chat
+mm run
+
+# Launch AI coding tools with MiniMax backend
+mm launch claude     # Claude Code
+mm launch toad       # Toad TUI (with tools via ACP)
+mm launch nori       # Nori TUI
+mm launch aider      # Aider
+mm launch codex      # Codex CLI
+mm launch kimi       # Kimi CLI
+mm launch opencode   # OpenCode
+mm launch openclaw   # OpenClaw
+mm launch gasclaw    # Gasclaw (multi-agent orchestration)
+
+# Iterative development
+mm loop "add tests for the auth module"
+```
+
+---
+
+## API
+
+**Endpoint**: `https://api.minimax.villamarket.ai/v1`
+
+OpenAI-compatible. All requests require a Bearer token.
+
+```bash
+curl https://api.minimax.villamarket.ai/v1/chat/completions \
   -H "Authorization: Bearer YOUR_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{
@@ -165,25 +67,46 @@ curl https://gpu-workspace.taile8dc37.ts.net/minimax/v1/chat/completions \
   }'
 ```
 
+| Model ID | Context | Description |
+|----------|---------|-------------|
+| `minimax-m2.5` | 128K | Recommended |
+| `MiniMaxAI/MiniMax-M2.5` | 128K | Full name alias |
+
+### Pricing
+
+| | Price |
+|---|---|
+| Input | $0.30 / 1M tokens |
+| Output | $1.20 / 1M tokens |
+
 ---
 
 ## Integrations
 
 ### Claude Code
 
-```json
-{
-  "apiProvider": "custom",
-  "customApiBaseUrl": "https://gpu-workspace.taile8dc37.ts.net/minimax/v1",
-  "customApiKey": "YOUR_API_KEY",
-  "customModelId": "minimax-m2.5"
-}
+```bash
+mm launch claude
+```
+
+Or manually:
+
+```bash
+export ANTHROPIC_BASE_URL="https://api.minimax.villamarket.ai"
+export ANTHROPIC_API_KEY="YOUR_API_KEY"
+claude --model minimax-m2.5
 ```
 
 ### Codex (OpenAI CLI)
 
 ```bash
-export OPENAI_BASE_URL="https://gpu-workspace.taile8dc37.ts.net/minimax/v1"
+mm launch codex
+```
+
+Or manually:
+
+```bash
+export OPENAI_BASE_URL="https://api.minimax.villamarket.ai/v1"
 export OPENAI_API_KEY="YOUR_API_KEY"
 codex --model minimax-m2.5 "Write a Python function"
 ```
@@ -191,7 +114,13 @@ codex --model minimax-m2.5 "Write a Python function"
 ### Aider
 
 ```bash
-aider --openai-api-base https://gpu-workspace.taile8dc37.ts.net/minimax/v1 \
+mm launch aider
+```
+
+Or manually:
+
+```bash
+aider --openai-api-base https://api.minimax.villamarket.ai/v1 \
       --openai-api-key YOUR_API_KEY \
       --model openai/minimax-m2.5
 ```
@@ -206,7 +135,7 @@ Add to `~/.continue/config.json`:
     "title": "MiniMax-M2.5",
     "provider": "openai",
     "model": "minimax-m2.5",
-    "apiBase": "https://gpu-workspace.taile8dc37.ts.net/minimax/v1",
+    "apiBase": "https://api.minimax.villamarket.ai/v1",
     "apiKey": "YOUR_API_KEY"
   }]
 }
@@ -215,7 +144,7 @@ Add to `~/.continue/config.json`:
 ### Cline (VS Code)
 
 1. API Provider: "OpenAI Compatible"
-2. Base URL: `https://gpu-workspace.taile8dc37.ts.net/minimax/v1`
+2. Base URL: `https://api.minimax.villamarket.ai/v1`
 3. API Key: `YOUR_API_KEY`
 4. Model ID: `minimax-m2.5`
 
@@ -223,7 +152,7 @@ Add to `~/.continue/config.json`:
 
 | Setting | Value |
 |---------|-------|
-| Base URL | `https://gpu-workspace.taile8dc37.ts.net/minimax/v1` |
+| Base URL | `https://api.minimax.villamarket.ai/v1` |
 | API Key | Your API key |
 | Model | `minimax-m2.5` |
 
@@ -237,7 +166,7 @@ Add to `~/.continue/config.json`:
 from openai import OpenAI
 
 client = OpenAI(
-    base_url="https://gpu-workspace.taile8dc37.ts.net/minimax/v1",
+    base_url="https://api.minimax.villamarket.ai/v1",
     api_key="YOUR_API_KEY",
 )
 
@@ -267,7 +196,7 @@ for chunk in stream:
 import OpenAI from "openai";
 
 const client = new OpenAI({
-  baseURL: "https://gpu-workspace.taile8dc37.ts.net/minimax/v1",
+  baseURL: "https://api.minimax.villamarket.ai/v1",
   apiKey: "YOUR_API_KEY",
 });
 
@@ -276,6 +205,51 @@ const response = await client.chat.completions.create({
   messages: [{ role: "user", content: "Hello!" }],
 });
 console.log(response.choices[0].message.content);
+```
+
+---
+
+## CLI Commands
+
+```
+mm run                    Interactive chat REPL
+mm serve                  Start full stack (vLLM + LiteLLM)
+mm stop                   Stop all servers
+mm ps                     Show running processes, GPU usage
+mm logs                   Tail server logs
+mm test                   Run inference health checks
+mm tui                    Launch admin TUI (key management)
+mm auth login             Store API key
+mm auth status            Check auth status
+mm auth logout            Remove stored key
+mm launch <tool>          Launch AI tools with MiniMax backend
+mm loop "task"            Ralph Loop — iterative development
+mm skills list            List available skills
+mm completion install     Install shell autocomplete
+mm upgrade                Upgrade to latest version
+```
+
+---
+
+## Docker Images
+
+Pre-built Docker images with full AI toolchain on [Docker Hub](https://hub.docker.com/u/thanakijwanavit):
+
+| Image | Primary Tool |
+|-------|-------------|
+| `thanakijwanavit/mm-claude` | Claude Code |
+| `thanakijwanavit/mm-nori` | Nori TUI |
+| `thanakijwanavit/mm-toad` | Toad TUI |
+| `thanakijwanavit/mm-codex` | Codex CLI |
+| `thanakijwanavit/mm-kimi` | Kimi CLI |
+| `thanakijwanavit/mm-opencode` | OpenCode |
+| `thanakijwanavit/mm-gasclaw` | Gasclaw (multi-agent) |
+| `thanakijwanavit/minimax` | mm CLI |
+
+Every image includes: Claude Code, Nori, nori-skillsets (senior-swe), Playwright MCP, mm CLI, bundled skills, and system prompts.
+
+```bash
+docker run --rm -it -e MINIMAX_API_KEY=sk-xxx thanakijwanavit/mm-claude:latest
 ```
 
 ---
@@ -331,29 +305,11 @@ vllm serve /path/to/MiniMax-M2.5-HF \
     --compilation-config '{"cudagraph_mode": "PIECEWISE"}'
 ```
 
-### API Key Management
-
-```bash
-minimax tui   # or ./admin
-```
-
-Keys: `g` generate | `v` view | `e` email key | `b` set budget | `d` delete | `r` refresh | `q` quit
-
 ---
 
-## Infrastructure
+## Contributing
 
-| Service | URL | Hosting |
-|---------|-----|---------|
-| Website | minimax.villamarket.ai | S3 + CloudFront |
-| Chat UI | app.minimax.villamarket.ai | CloudFront -> Tailscale Funnel -> DeerFlow |
-| API | gpu-workspace.taile8dc37.ts.net/minimax/v1 | Tailscale Funnel -> LiteLLM |
-
-## Rate Limits
-
-- Max concurrent requests: 16
-- Max context length: 131,072 tokens (128K)
-- Request timeout: 600 seconds
+See [CONTRIBUTING.md](CONTRIBUTING.md) for testing rules, key generation, and development workflow.
 
 ## Support
 
