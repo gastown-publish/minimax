@@ -42,18 +42,28 @@ jobs:
           path: dist/
       - name: Publish to PyPI (trusted publishing)
         uses: pypa/gh-action-pypi-publish@release/v1
-        continue-on-error: true
         id: trusted
+        continue-on-error: true
       - name: Publish to PyPI (API token fallback)
         if: steps.trusted.outcome == 'failure'
         uses: pypa/gh-action-pypi-publish@release/v1
+        id: token
         with:
           password: ${{ secrets.PYPI_API_TOKEN }}
         continue-on-error: true
-      - name: PyPI publish status
-        if: steps.trusted.outcome == 'failure'
+      - name: PyPI publish result
         run: |
-          echo "::warning::PyPI publish skipped — configure trusted publishing at https://pypi.org/manage/project/minimax-agent/settings/publishing/ or add PYPI_API_TOKEN secret"
+          if [ "${{ steps.trusted.outcome }}" = "success" ]; then
+            echo "PyPI publish succeeded (trusted publishing)"
+          elif [ "${{ steps.token.outcome }}" = "success" ]; then
+            echo "PyPI publish succeeded (API token)"
+          else
+            echo "::error::PyPI publish FAILED — both trusted publishing and API token methods failed."
+            echo "::error::Fix: configure trusted publishing at https://pypi.org/manage/project/minimax-agent/settings/publishing/"
+            echo "::error::Or add PYPI_API_TOKEN secret to the repo."
+            echo "Users installing via 'pip install minimax-agent' will get an outdated version!"
+            exit 1
+          fi
 
   deb:
     needs: build

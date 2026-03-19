@@ -20,6 +20,31 @@ console = Console()
 # Isolated config dir for mm-launched Claude Code (separate from normal claude)
 MM_CLAUDE_CONFIG = os.path.expanduser("~/.mm-claude")
 
+
+def _check_api(key: str) -> bool:
+    """Quick API connectivity check — GET /v1/models with the key."""
+    import urllib.request
+    import urllib.error
+
+    try:
+        req = urllib.request.Request(
+            f"{PUBLIC_API_V1}/models",
+            headers={"Authorization": f"Bearer {key}"},
+        )
+        resp = urllib.request.urlopen(req, timeout=5)
+        if resp.status == 200:
+            console.print("  [green]API: connected[/]")
+            return True
+    except urllib.error.HTTPError as e:
+        if e.code == 401:
+            console.print("  [red]API: invalid key (401)[/]")
+        else:
+            console.print(f"  [yellow]API: HTTP {e.code}[/]")
+        return False
+    except Exception:
+        console.print("  [yellow]API: unreachable (continuing anyway)[/]")
+    return False
+
 # Docker Hub namespace (public by default, no auth needed to pull)
 DOCKER_HUB = "thanakijwanavit"
 
@@ -317,6 +342,7 @@ def claude(no_docker: bool, extra_args: tuple):
     console.print(f"  API: {PUBLIC_API_BASE}")
     console.print(f"  Model: {DEFAULT_MODEL}")
     console.print(f"  Config: {MM_CLAUDE_CONFIG}")
+    _check_api(key)
 
     if _has_docker() and not no_docker:
         home = str(Path.home())
@@ -350,6 +376,7 @@ def aider(no_docker: bool, extra_args: tuple):
     console.print(f"[bold]Launching Aider[/] with MiniMax-M2.5...")
     console.print(f"  API: {PUBLIC_API_V1}")
     console.print(f"  Model: openai/{DEFAULT_MODEL}")
+    _check_api(key)
 
     docker_env = {
         "OPENAI_API_BASE": PUBLIC_API_V1,
@@ -385,6 +412,7 @@ def codex(no_docker: bool, extra_args: tuple):
     console.print(f"[bold]Launching Codex[/] with MiniMax-M2.5...")
     console.print(f"  API: {PUBLIC_API_V1}")
     console.print(f"  Model: {DEFAULT_MODEL}")
+    _check_api(key)
 
     docker_env = {
         "OPENAI_BASE_URL": PUBLIC_API_V1,
@@ -415,12 +443,13 @@ def codex(no_docker: bool, extra_args: tuple):
 def opencode(no_docker: bool, extra_args: tuple):
     """Launch OpenCode with MiniMax-M2.5.
 
-    Uses Docker (ghcr.io/anomalyco/opencode) if available, otherwise local install.
+    Uses Docker if available, otherwise local install.
     """
     key = _require_key()
 
     console.print(f"[bold]Launching OpenCode[/] with MiniMax-M2.5...")
     console.print(f"  API: {PUBLIC_API_V1}")
+    _check_api(key)
 
     docker_env = {
         "OPENAI_API_KEY": key,
@@ -457,6 +486,7 @@ def openclaw(no_docker: bool, extra_args: tuple):
     console.print(f"[bold]Launching OpenClaw[/] with MiniMax-M2.5...")
     console.print(f"  API: {PUBLIC_API_V1}")
     console.print(f"  Model: minimax/{DEFAULT_MODEL}")
+    _check_api(key)
 
     oc_env = {
         "OPENAI_API_BASE": PUBLIC_API_V1,
@@ -509,6 +539,7 @@ def nori(no_docker: bool, extra_args: tuple):
     console.print(f"[bold]Launching Nori[/] with MiniMax-M2.5...")
     console.print(f"  API: {PUBLIC_API_BASE}")
     console.print(f"  Model: {DEFAULT_MODEL}")
+    _check_api(key)
 
     if _has_docker() and not no_docker:
         home = str(Path.home())
@@ -577,6 +608,7 @@ def kimi(no_docker: bool, extra_args: tuple):
     console.print(f"[bold]Launching Kimi CLI[/] with MiniMax-M2.5...")
     console.print(f"  API: {PUBLIC_API_V1}")
     console.print(f"  Model: {DEFAULT_MODEL}")
+    _check_api(key)
 
     docker_env = {
         "OPENAI_BASE_URL": PUBLIC_API_V1,
