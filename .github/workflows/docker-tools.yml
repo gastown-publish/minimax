@@ -24,6 +24,8 @@ jobs:
             file: docker/toad.Dockerfile
           - name: opencode
             file: docker/opencode.Dockerfile
+          - name: gasclaw
+            file: docker/gasclaw.Dockerfile
     steps:
       - uses: actions/checkout@v4
       - name: Log in to Docker Hub
