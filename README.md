@@ -244,7 +244,7 @@ Pre-built Docker images with full AI toolchain on [Docker Hub](https://hub.docke
 | `thanakijwanavit/mm-kimi` | Kimi CLI |
 | `thanakijwanavit/mm-opencode` | OpenCode |
 | `thanakijwanavit/mm-gasclaw` | Gasclaw (multi-agent) |
-| `thanakijwanavit/minimax` | mm CLI |
+| `thanakijwanavit/mm` | mm CLI |
 
 Every image includes: Claude Code, Nori, nori-skillsets (senior-swe), Playwright MCP, claude-mem, mm CLI, bundled skills, and system prompts.
 
