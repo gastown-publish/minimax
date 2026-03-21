@@ -46,6 +46,7 @@ Thumbs.db
 .runtime/
 .claude/commands/
 .logs/
+.beads/
 
 # Dolt database files (added by bd init)
 .dolt/
