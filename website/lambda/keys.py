@@ -15,6 +15,20 @@ from datetime import datetime
 LITELLM_URL = os.environ.get("LITELLM_URL", "http://localhost:4000")
 LITELLM_MASTER_KEY = os.environ.get("LITELLM_MASTER_KEY", "")
 
+_ALLOWED_ORIGINS = {
+    "https://minimax.villamarket.ai",
+    "https://app.minimax.villamarket.ai",
+    "http://localhost:3000",
+}
+
+
+def _cors_origin(event):
+    """Return the request origin if it is in the allowed whitelist, or None."""
+    headers = event.get("headers") or {}
+    # API Gateway may lowercase header names
+    origin = headers.get("origin") or headers.get("Origin") or ""
+    return origin if origin in _ALLOWED_ORIGINS else None
+
 # Tier limits
 TIER_LIMITS = {
     "free": {"max_budget": 5.0, "rpm_limit": 5, "max_keys": 5},
@@ -60,15 +74,18 @@ def _count_user_keys(user_id):
     return len(keys)
 
 
-def _response(status, body):
+def _response(status, body, event=None):
+    headers = {
+        "Content-Type": "application/json",
+        "Access-Control-Allow-Headers": "Content-Type,Authorization",
+        "Access-Control-Allow-Methods": "GET,POST,DELETE,OPTIONS",
+    }
+    origin = _cors_origin(event) if event else None
+    if origin:
+        headers["Access-Control-Allow-Origin"] = origin
     return {
         "statusCode": status,
-        "headers": {
-            "Content-Type": "application/json",
-            "Access-Control-Allow-Origin": "*",
-            "Access-Control-Allow-Headers": "Content-Type,Authorization",
-            "Access-Control-Allow-Methods": "GET,POST,DELETE,OPTIONS",
-        },
+        "headers": headers,
         "body": json.dumps(body),
     }
 
@@ -79,7 +96,7 @@ def handler(event, context):
 
     # CORS preflight
     if method == "OPTIONS":
-        return _response(200, {})
+        return _response(200, {}, event)
 
     # Extract user from JWT claims (HTTP API v2 uses authorizer.jwt.claims)
     authorizer = event.get("requestContext", {}).get("authorizer", {})
@@ -88,7 +105,7 @@ def handler(event, context):
     email = claims.get("email", "")
 
     if not user_id:
-        return _response(401, {"error": "Unauthorized"})
+        return _response(401, {"error": "Unauthorized"}, event)
 
     tier = _get_user_tier(user_id)
     limits = TIER_LIMITS.get(tier, TIER_LIMITS["free"])
@@ -99,7 +116,7 @@ def handler(event, context):
         if max_keys is not None:
             count = _count_user_keys(user_id)
             if count >= max_keys:
-                return _response(400, {"error": f"Key limit reached ({max_keys} for {tier} tier)"})
+                return _response(400, {"error": f"Key limit reached ({max_keys} for {tier} tier)"}, event)
 
         # Set budget on the USER, not the key — prevents gaming by creating multiple keys
         try:
@@ -133,7 +150,7 @@ def handler(event, context):
         try:
             result = _litellm_request("POST", "/key/generate", payload)
         except Exception as e:
-            return _response(400, {"error": str(e)})
+            return _response(400, {"error": str(e)}, event)
         return _response(200, {
             "token": result.get("token", ""),
             "key": result.get("key", ""),
@@ -142,13 +159,13 @@ def handler(event, context):
             "max_budget": limits["max_budget"],
             "created_at": datetime.utcnow().isoformat(),
             "expires": None,
-        })
+        }, event)
 
     elif method == "GET" and path.rstrip("/") == "/api/keys":
         try:
             data = _litellm_request("GET", f"/key/list?user_id={user_id}&return_full_object=true")
         except Exception as e:
-            return _response(500, {"error": str(e)})
+            return _response(500, {"error": str(e)}, event)
         keys = data if isinstance(data, list) else data.get("keys", [])
         result = []
         for k in keys:
@@ -161,14 +178,14 @@ def handler(event, context):
                 "created_at": k.get("created_at", ""),
                 "expires": k.get("expires"),
             })
-        return _response(200, result)
+        return _response(200, result, event)
 
     elif method == "DELETE" and "/api/keys/" in path:
         token = path.split("/api/keys/")[-1]
         try:
             _litellm_request("POST", "/key/delete", {"keys": [token]})
         except Exception as e:
-            return _response(400, {"error": str(e)})
-        return _response(200, {"deleted": True})
+            return _response(400, {"error": str(e)}, event)
+        return _response(200, {"deleted": True}, event)
 
-    return _response(404, {"error": "Not found"})
+    return _response(404, {"error": "Not found"}, event)

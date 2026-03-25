@@ -28,7 +28,7 @@ if ss -tlnp | grep -q ":4000 "; then
     echo "LiteLLM already running on port 4000"
 else
     # Database connection for API key persistence
-    export DATABASE_URL="postgresql://litellm:litellm-kimi-k25@localhost:5432/litellm"
+    export DATABASE_URL="postgresql://litellm:${DATABASE_PASSWORD:-litellm-kimi-k25}@localhost:5432/litellm"
     export LD_LIBRARY_PATH=""
     # Prisma binary must be on PATH for LiteLLM to connect to DB
     export PATH="$VENV/bin:$PATH"

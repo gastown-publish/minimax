@@ -13,6 +13,7 @@ from __future__ import annotations
 import asyncio
 import json
 import os
+import shlex
 import subprocess
 import uuid
 from pathlib import Path
@@ -208,8 +209,8 @@ def _execute_tool(name: str, args: dict, cwd: str) -> str:
         if name == "bash":
             command = args.get("command", "")
             result = subprocess.run(
-                command,
-                shell=True,
+                shlex.split(command),
+                shell=False,
                 capture_output=True,
                 text=True,
                 timeout=120,

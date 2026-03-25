@@ -23,16 +23,32 @@ PRICE_IDS = {
 
 SITE_URL = os.environ.get("SITE_URL", "https://minimax.villamarket.ai")
 
+_ALLOWED_ORIGINS = {
+    "https://minimax.villamarket.ai",
+    "https://app.minimax.villamarket.ai",
+    "http://localhost:3000",
+}
 
-def _response(status, body):
+
+def _cors_origin(event):
+    """Return the request origin if it is in the allowed whitelist, or None."""
+    headers = event.get("headers") or {}
+    origin = headers.get("origin") or headers.get("Origin") or ""
+    return origin if origin in _ALLOWED_ORIGINS else None
+
+
+def _response(status, body, event=None):
+    headers = {
+        "Content-Type": "application/json",
+        "Access-Control-Allow-Headers": "Content-Type,Authorization",
+        "Access-Control-Allow-Methods": "POST,OPTIONS",
+    }
+    origin = _cors_origin(event) if event else None
+    if origin:
+        headers["Access-Control-Allow-Origin"] = origin
     return {
         "statusCode": status,
-        "headers": {
-            "Content-Type": "application/json",
-            "Access-Control-Allow-Origin": "*",
-            "Access-Control-Allow-Headers": "Content-Type,Authorization",
-            "Access-Control-Allow-Methods": "POST,OPTIONS",
-        },
+        "headers": headers,
         "body": json.dumps(body),
     }
 
@@ -41,7 +57,7 @@ def handler(event, context):
     method = event.get("httpMethod", event.get("requestContext", {}).get("http", {}).get("method"))
 
     if method == "OPTIONS":
-        return _response(200, {})
+        return _response(200, {}, event)
 
     # HTTP API v2.0 payload: claims at authorizer.jwt.claims
     # REST API v1.0 payload: claims at authorizer.claims
@@ -51,7 +67,7 @@ def handler(event, context):
     email = claims.get("email", "")
 
     if not user_id:
-        return _response(401, {"error": "Unauthorized"})
+        return _response(401, {"error": "Unauthorized"}, event)
 
     body = json.loads(event.get("body", "{}") or "{}")
     tier = body.get("tier", "")
@@ -59,14 +75,14 @@ def handler(event, context):
     promo_code = body.get("promo_code")
 
     if tier not in PRICE_IDS:
-        return _response(400, {"error": f"Invalid tier: {tier}"})
+        return _response(400, {"error": f"Invalid tier: {tier}"}, event)
 
     if billing_period not in ("monthly", "yearly"):
-        return _response(400, {"error": f"Invalid billing_period: {billing_period}"})
+        return _response(400, {"error": f"Invalid billing_period: {billing_period}"}, event)
 
     price_id = PRICE_IDS[tier].get(billing_period, "")
     if not price_id:
-        return _response(400, {"error": f"No price configured for {tier}/{billing_period}"})
+        return _response(400, {"error": f"No price configured for {tier}/{billing_period}"}, event)
 
     checkout_params = {
         "mode": "subscription",
@@ -86,4 +102,4 @@ def handler(event, context):
     return _response(200, {
         "url": session.url,
         "sessionId": session.id,
-    })
+    }, event)

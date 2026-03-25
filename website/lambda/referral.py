@@ -27,15 +27,32 @@ def _generate_code():
     return f"MINI-{suffix}"
 
 
-def _response(status, body):
+_ALLOWED_ORIGINS = {
+    "https://minimax.villamarket.ai",
+    "https://app.minimax.villamarket.ai",
+    "http://localhost:3000",
+}
+
+
+def _cors_origin(event):
+    """Return the request origin if it is in the allowed whitelist, or None."""
+    headers = event.get("headers") or {}
+    origin = headers.get("origin") or headers.get("Origin") or ""
+    return origin if origin in _ALLOWED_ORIGINS else None
+
+
+def _response(status, body, event=None):
+    headers = {
+        "Content-Type": "application/json",
+        "Access-Control-Allow-Headers": "Content-Type,Authorization",
+        "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
+    }
+    origin = _cors_origin(event) if event else None
+    if origin:
+        headers["Access-Control-Allow-Origin"] = origin
     return {
         "statusCode": status,
-        "headers": {
-            "Content-Type": "application/json",
-            "Access-Control-Allow-Origin": "*",
-            "Access-Control-Allow-Headers": "Content-Type,Authorization",
-            "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
-        },
+        "headers": headers,
         "body": json.dumps(body, default=str),
     }
 
@@ -65,7 +82,7 @@ def handler(event, context):
     path = event.get("path", event.get("rawPath", ""))
 
     if method == "OPTIONS":
-        return _response(200, {})
+        return _response(200, {}, event)
 
     claims = (
         event.get("requestContext", {})
@@ -76,7 +93,7 @@ def handler(event, context):
     email = claims.get("email", "")
 
     if not user_id:
-        return _response(401, {"error": "Unauthorized"})
+        return _response(401, {"error": "Unauthorized"}, event)
 
     user = _get_or_create_user(user_id, email)
 
@@ -85,22 +102,22 @@ def handler(event, context):
             "code": user.get("referral_code", ""),
             "referral_count": int(user.get("referral_count", 0)),
             "credit_earned": float(user.get("credit_earned", 0)),
-        })
+        }, event)
 
     elif method == "POST" and path.rstrip("/") == "/api/referral/apply":
         body = json.loads(event.get("body", "{}") or "{}")
         code = body.get("code", "").strip().upper()
 
         if not code:
-            return _response(400, {"error": "Referral code is required"})
+            return _response(400, {"error": "Referral code is required"}, event)
 
         # Can't use own code
         if code == user.get("referral_code"):
-            return _response(400, {"error": "Cannot use your own referral code"})
+            return _response(400, {"error": "Cannot use your own referral code"}, event)
 
         # Already referred
         if user.get("referred_by"):
-            return _response(400, {"error": "You have already used a referral code"})
+            return _response(400, {"error": "You have already used a referral code"}, event)
 
         # Find referrer by scanning for referral_code
         # Note: In production, use a GSI on referral_code
@@ -111,7 +128,7 @@ def handler(event, context):
         )
         items = scan_resp.get("Items", [])
         if not items:
-            return _response(400, {"error": "Invalid referral code"})
+            return _response(400, {"error": "Invalid referral code"}, event)
 
         referrer = items[0]
         referrer_id = referrer["user_id"]
@@ -135,6 +152,6 @@ def handler(event, context):
 
         return _response(200, {
             "message": f"Referral applied! You get {REFEREE_FREE_MONTHS} month(s) free Pro.",
-        })
+        }, event)
 
-    return _response(404, {"error": "Not found"})
+    return _response(404, {"error": "Not found"}, event)
