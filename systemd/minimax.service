@@ -1,0 +1,18 @@
+[Unit]
+Description=MiniMax-M2.5 API Server
+After=network.target docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStartPre=/usr/bin/docker pull ghcr.io/gastown-publish/mm-api:latest
+ExecStart=/usr/bin/docker run --rm -p 8080:8080 -p 4000:4000 \
+    --env MINIMAX_API_KEY=${MINIMAX_API_KEY} \
+    --name minimax-api \
+    ghcr.io/gastown-publish/mm-api:latest
+
+ExecStop=/usr/bin/docker stop minimax-api || true
+
+[Install]
+WantedBy=multi-user.target
