@@ -14,6 +14,11 @@ RUN pip install --no-cache-dir /tmp/*.whl && rm /tmp/*.whl && \
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
     CMD curl -f http://localhost:4000/health || exit 1
 
+# Create non-root user for security
+RUN useradd --create-home --shell /bin/bash appuser && \
+    chown -R appuser:appuser /app
+
+USER appuser
 WORKDIR /app
 ENTRYPOINT ["mm"]
 CMD ["--help"]
