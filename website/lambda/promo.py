@@ -50,7 +50,7 @@ def handler(event, context):
     try:
         resp = promos_table.get_item(Key={"code": code})
     except Exception as e:
-        return _response(500, {"error": str(e)})
+        return _response(500, {"error": "Internal server error"})
 
     item = resp.get("Item")
     if not item:

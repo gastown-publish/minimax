@@ -2,10 +2,31 @@
 
 from __future__ import annotations
 
-import logging
+import os
+import time
 import httpx
 
-logger = logging.getLogger(__name__)
+# Rate limiting for email operations (max 1 per 60 seconds)
+_EMAIL_RATE_FILE = "/tmp/minimax_email_rate_limit"
+
+
+def _check_email_rate_limit() -> bool:
+    """Check if we're within the rate limit window. Returns True if allowed."""
+    now = time.time()
+    if os.path.exists(_EMAIL_RATE_FILE):
+        try:
+            last_sent = float(open(_EMAIL_RATE_FILE).read().strip())
+            if now - last_sent < 60:
+                return False
+        except (ValueError, IOError):
+            pass
+    # Update rate file
+    try:
+        with open(_EMAIL_RATE_FILE, "w") as f:
+            f.write(str(now))
+    except IOError:
+        pass
+    return True
 
 from .constants import LITELLM_BASE, PUBLIC_API_BASE, VLLM_BASE
 
@@ -46,7 +67,7 @@ def check_health(api_key: str | None = None, timeout: float = 10) -> bool:
             r = httpx.get(endpoint, headers=_headers(api_key), timeout=timeout)
             if r.status_code == 200:
                 return True
-        except Exception as e: logger.debug("%s", e)
+        except Exception:
             continue
     return False
 
@@ -61,7 +82,7 @@ def list_models(api_key: str | None = None, timeout: float = 5) -> list[dict]:
         if not isinstance(data, dict):
             return []
         return data.get("data", [])
-    except Exception as e: logger.debug("%s", e)
+    except Exception:
         return []
 
 
@@ -75,7 +96,7 @@ def verify_key(api_key: str, timeout: float = 5) -> bool:
             timeout=timeout,
         )
         return r.status_code == 200
-    except Exception as e: logger.debug("%s", e)
+    except Exception:
         return False
 
 
@@ -109,7 +130,12 @@ def send_key_email(email: str, api_key: str, alias: str = "") -> bool:
 
     Looks up the recipient's MX record and delivers directly via SMTP.
     Falls back to AWS SES if direct delivery fails.
+    Rate-limited to 1 email per 60 seconds to prevent abuse.
     """
+    # Rate limit check
+    if not _check_email_rate_limit():
+        return False
+
     import smtplib
     from email.mime.text import MIMEText
 
@@ -142,7 +168,7 @@ def send_key_email(email: str, api_key: str, alias: str = "") -> bool:
         server.sendmail(SES_SENDER, [email], msg.as_string())
         server.quit()
         return True
-    except Exception as e: logger.debug("%s", e)
+    except Exception:
         pass
 
     # 2. Fallback: AWS SES (works once out of sandbox)
@@ -160,7 +186,7 @@ def send_key_email(email: str, api_key: str, alias: str = "") -> bool:
             },
         )
         return True
-    except Exception as e: logger.debug("%s", e)
+    except Exception:
         pass
 
     return False

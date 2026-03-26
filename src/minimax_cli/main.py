@@ -154,8 +154,10 @@ from .commands.acp_cmd import acp
 from .commands.launch import launch
 from .commands.loop import loop
 from .commands.skills_cmd import skills
+from .commands.http import http
 
 cli.add_command(run)
+cli.add_command(http)
 cli.add_command(serve)
 cli.add_command(stop)
 cli.add_command(logs)
