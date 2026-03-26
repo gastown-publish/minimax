@@ -1,14 +1,20 @@
 """Shared constants for paths, URLs, and model IDs."""
 
+import os
 from pathlib import Path
 
 # ── Paths ──────────────────────────────────────────────────────────────
-REPO_DIR = Path(__file__).resolve().parents[2]  # /home/nic/data/models/MiniMax-M2.5
+# Default to repo root, allow override via env var
+_REPO_DEFAULT = Path(__file__).resolve().parents[2]
+REPO_DIR = Path(os.environ.get("MINIMAX_REPO_DIR", _REPO_DEFAULT))
 SCRIPTS_DIR = REPO_DIR / "scripts"
-# Server-only paths — only valid on the self-hosted server
-_SERVER_REPO = Path("/home/nic/data/models/MiniMax-M2.5")
+
+# Server-only paths — allow override via env vars
+_SERVER_REPO_DEFAULT = os.environ.get("MINIMAX_SERVER_DIR", "/opt/minimax")
+_SERVER_REPO = Path(_SERVER_REPO_DEFAULT)
 VENV_DIR = _SERVER_REPO / ".venv" if _SERVER_REPO.exists() else None
-MODEL_DIR = Path("/home/nic/data/models/MiniMax-M2.5-HF") if Path("/home/nic/data/models/MiniMax-M2.5-HF").exists() else None
+_MODEL_DIR_DEFAULT = os.environ.get("MINIMAX_MODEL_DIR", "/opt/models/MiniMax-M2.5-HF")
+MODEL_DIR = Path(_MODEL_DIR_DEFAULT) if Path(_MODEL_DIR_DEFAULT).exists() else None
 
 CONFIG_DIR = Path.home() / ".config" / "minimax"
 CONFIG_FILE = CONFIG_DIR / "config.json"
