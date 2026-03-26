@@ -18,6 +18,16 @@ import uuid
 from pathlib import Path
 from typing import Any
 
+
+def _is_safe_path(path: Path, allowed_dir: Path) -> bool:
+    """Validate path is within allowed directory to prevent path traversal."""
+    try:
+        resolved = path.resolve()
+        allowed = allowed_dir.resolve()
+        return str(resolved).startswith(str(allowed))
+    except (ValueError, OSError):
+        return False
+
 from acp import (
     InitializeResponse,
     LoadSessionResponse,
@@ -227,6 +237,9 @@ def _execute_tool(name: str, args: dict, cwd: str) -> str:
         elif name == "read_file":
             path = args.get("path", "")
             file_path = Path(path) if os.path.isabs(path) else Path(cwd) / path
+            # Validate path is within allowed directory
+            if not _is_safe_path(file_path, Path(cwd)):
+                return f"Error: Access denied - path outside allowed directory"
             if not file_path.exists():
                 return f"Error: File not found: {file_path}"
             if not file_path.is_file():
@@ -241,6 +254,9 @@ def _execute_tool(name: str, args: dict, cwd: str) -> str:
             path = args.get("path", "")
             content = args.get("content", "")
             file_path = Path(path) if os.path.isabs(path) else Path(cwd) / path
+            # Validate path is within allowed directory
+            if not _is_safe_path(file_path, Path(cwd)):
+                return f"Error: Access denied - path outside allowed directory"
             file_path.parent.mkdir(parents=True, exist_ok=True)
             file_path.write_text(content)
             return f"Written {len(content)} bytes to {file_path}"
