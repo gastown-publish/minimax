@@ -40,6 +40,11 @@ PUBLIC_BASE = PUBLIC_API_BASE + "/v1"
 MODEL_IDS = ["minimax-m2.5", "MiniMaxAI/MiniMax-M2.5"]
 DEFAULT_MODEL = "minimax-m2.5"
 
+# ── Context Windows ──────────────────────────────────────────────────
+CONTEXT_WINDOW = 128_000  # Max input tokens
+OUTPUT_WINDOW = 16_384   # Max output tokens
+FULL_CONTEXT = 131_072  # Combined context window
+
 # ── SES ───────────────────────────────────────────────────────────────
 SES_SENDER = "noreply@villamarket.ai"
 SES_REGION = "us-east-1"
