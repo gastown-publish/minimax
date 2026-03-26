@@ -134,3 +134,13 @@ This repo manages the MiniMax-M2.5 platform: inference server, website, chat UI,
 - **Context**: 128K tokens
 - **Performance**: 80.2% SWE-Bench Verified, 51.3% Multi-SWE-Bench
 - **Pricing**: $0.30/M input, $1.20/M output
+
+## Environment Variables
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `MINIMAX_REPO_DIR` | auto-detect | Path to repo root |
+| `MINIMAX_SERVER_DIR` | `/opt/minimax` | Server installation path |
+| `MINIMAX_MODEL_DIR` | `/opt/models/MiniMax-M2.5-HF` | Model files path |
+| `MINIMAX_API_KEY` | none | API key for authenticating to the API |
+| `LITELLM_MASTER_KEY` | none | LiteLLM admin key (server only) |

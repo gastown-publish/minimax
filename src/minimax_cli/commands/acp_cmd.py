@@ -1,3 +1,4 @@
+from __future__ import annotations
 """ACP server command — exposes MiniMax-M2.5 to Toad and IDEs."""
 
 import asyncio

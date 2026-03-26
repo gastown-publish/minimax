@@ -1,3 +1,4 @@
+from __future__ import annotations
 """term — launch Toad TUI with MiniMax-M2.5 via ACP."""
 
 import os
