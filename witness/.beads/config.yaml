@@ -44,6 +44,12 @@
 #   git-push: false    # Disable git push (export locally only)
 #   git-repo: ""       # Separate git repo for backups (default: project repo)
 
+# Dolt settings
+dolt:
+  auto-start: false
+  port: 3309
+  host: 127.0.0.1
+
 # Integration settings (access with 'bd config get/set')
 # These are stored in the database, not in this file:
 # - jira.url
@@ -52,3 +58,9 @@
 # - linear.api-key
 # - github.org
 # - github.repo
+
+dolt.database: "witness"
+
+dolt.host: 127.0.0.1
+
+dolt.port: 3309
