@@ -50,16 +50,25 @@ struct SSEParser: AsyncSequence {
             let raw = buffer
             buffer = ""
 
+            // Guard against empty or malformed data
+            guard !raw.isEmpty else { return nil }
+
             var eventType = "message"
             var dataLines: [String] = []
 
-            for line in raw.split(separator: "\n", omittingEmptySubsequences: false) {
-                let s = String(line)
-                if s.hasPrefix("event:") {
-                    eventType = s.dropFirst(6).trimmingCharacters(in: .whitespaces)
-                } else if s.hasPrefix("data:") {
-                    dataLines.append(String(s.dropFirst(5)).trimmingCharacters(in: .whitespaces))
+            do {
+                for line in raw.split(separator: "\n", omittingEmptySubsequences: false) {
+                    let s = String(line)
+                    if s.hasPrefix("event:") {
+                        eventType = s.dropFirst(6).trimmingCharacters(in: .whitespaces)
+                    } else if s.hasPrefix("data:") {
+                        dataLines.append(String(s.dropFirst(5)).trimmingCharacters(in: .whitespaces))
+                    }
                 }
+            } catch {
+                // Log error and return nil for malformed events
+                print("SSE parsing error: \(error)")
+                return nil
             }
 
             guard !dataLines.isEmpty else { return nil }
