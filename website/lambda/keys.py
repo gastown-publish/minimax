@@ -151,7 +151,7 @@ def handler(event, context):
         try:
             result = _litellm_request("POST", "/key/generate", payload)
         except Exception as e:
-            return _response(400, {"error": str(e)})
+            return _response(400, {"error": "Invalid request"})
         return _response(200, {
             "token": result.get("token", ""),
             "key": result.get("key", ""),
@@ -166,7 +166,7 @@ def handler(event, context):
         try:
             data = _litellm_request("GET", f"/key/list?user_id={user_id}&return_full_object=true")
         except Exception as e:
-            return _response(500, {"error": str(e)})
+            return _response(500, {"error": "Internal server error"})
         keys = data if isinstance(data, list) else data.get("keys", [])
         result = []
         for k in keys:
@@ -186,7 +186,7 @@ def handler(event, context):
         try:
             _litellm_request("POST", "/key/delete", {"keys": [token]})
         except Exception as e:
-            return _response(400, {"error": str(e)})
+            return _response(400, {"error": "Invalid request"})
         return _response(200, {"deleted": True})
 
     return _response(404, {"error": "Not found"})
