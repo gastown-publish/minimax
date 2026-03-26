@@ -2,7 +2,31 @@
 
 from __future__ import annotations
 
+import os
+import time
 import httpx
+
+# Rate limiting for email operations (max 1 per 60 seconds)
+_EMAIL_RATE_FILE = "/tmp/minimax_email_rate_limit"
+
+
+def _check_email_rate_limit() -> bool:
+    """Check if we're within the rate limit window. Returns True if allowed."""
+    now = time.time()
+    if os.path.exists(_EMAIL_RATE_FILE):
+        try:
+            last_sent = float(open(_EMAIL_RATE_FILE).read().strip())
+            if now - last_sent < 60:
+                return False
+        except (ValueError, IOError):
+            pass
+    # Update rate file
+    try:
+        with open(_EMAIL_RATE_FILE, "w") as f:
+            f.write(str(now))
+    except IOError:
+        pass
+    return True
 
 from .constants import LITELLM_BASE, PUBLIC_API_BASE, VLLM_BASE
 
@@ -106,7 +130,12 @@ def send_key_email(email: str, api_key: str, alias: str = "") -> bool:
 
     Looks up the recipient's MX record and delivers directly via SMTP.
     Falls back to AWS SES if direct delivery fails.
+    Rate-limited to 1 email per 60 seconds to prevent abuse.
     """
+    # Rate limit check
+    if not _check_email_rate_limit():
+        return False
+
     import smtplib
     from email.mime.text import MIMEText
 
