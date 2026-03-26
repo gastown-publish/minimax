@@ -23,8 +23,10 @@ export interface AuthUser {
 const STORAGE_KEY = "minimax_auth";
 
 function saveTokens(user: AuthUser): void {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(user));
+  // Store only non-sensitive data in localStorage; rely on cookie for tokens
+  localStorage.setItem(STORAGE_KEY, JSON.stringify({ email: user.email, sub: user.sub }));
   // Set cross-subdomain cookie so app.minimax.villamarket.ai can read auth
+  // Note: For production, set HttpOnly cookie server-side for true security
   const encoded = encodeURIComponent(JSON.stringify({ email: user.email, sub: user.sub, accessToken: user.accessToken, idToken: user.idToken }));
   document.cookie = `minimax_auth=${encoded}; domain=.villamarket.ai; path=/; max-age=86400; secure; samesite=strict`;
 }
