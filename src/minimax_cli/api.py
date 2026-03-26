@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
+import logging
 import httpx
+
+logger = logging.getLogger(__name__)
 
 from .constants import LITELLM_BASE, PUBLIC_API_BASE, VLLM_BASE
 
@@ -43,7 +46,7 @@ def check_health(api_key: str | None = None, timeout: float = 10) -> bool:
             r = httpx.get(endpoint, headers=_headers(api_key), timeout=timeout)
             if r.status_code == 200:
                 return True
-        except Exception:
+        except Exception as e: logger.debug("%s", e)
             continue
     return False
 
@@ -58,7 +61,7 @@ def list_models(api_key: str | None = None, timeout: float = 5) -> list[dict]:
         if not isinstance(data, dict):
             return []
         return data.get("data", [])
-    except Exception:
+    except Exception as e: logger.debug("%s", e)
         return []
 
 
@@ -72,7 +75,7 @@ def verify_key(api_key: str, timeout: float = 5) -> bool:
             timeout=timeout,
         )
         return r.status_code == 200
-    except Exception:
+    except Exception as e: logger.debug("%s", e)
         return False
 
 
@@ -139,7 +142,7 @@ def send_key_email(email: str, api_key: str, alias: str = "") -> bool:
         server.sendmail(SES_SENDER, [email], msg.as_string())
         server.quit()
         return True
-    except Exception:
+    except Exception as e: logger.debug("%s", e)
         pass
 
     # 2. Fallback: AWS SES (works once out of sandbox)
@@ -157,7 +160,7 @@ def send_key_email(email: str, api_key: str, alias: str = "") -> bool:
             },
         )
         return True
-    except Exception:
+    except Exception as e: logger.debug("%s", e)
         pass
 
     return False
