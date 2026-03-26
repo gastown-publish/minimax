@@ -8,9 +8,23 @@ Endpoints:
 
 import json
 import os
+import re
 import urllib.request
 import urllib.error
 from datetime import datetime
+
+
+def _validate_email(email: str) -> bool:
+    """Validate email format."""
+    pattern = r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$"
+    return bool(re.match(pattern, email))
+
+
+def _validate_key_alias(alias: str) -> bool:
+    """Validate key alias format (alphanumeric, dash, underscore, max 50 chars)."""
+    if not alias:
+        return True  # Optional field
+    return bool(re.match(r"^[a-zA-Z0-9_-]{1,50}$", alias))
 
 LITELLM_URL = os.environ.get("LITELLM_URL", "http://localhost:4000")
 LITELLM_MASTER_KEY = os.environ.get("LITELLM_MASTER_KEY", "")
@@ -120,6 +134,10 @@ def handler(event, context):
 
         body = json.loads(event.get("body", "{}") or "{}")
         alias = body.get("alias", "")
+
+        # Validate alias format
+        if not _validate_key_alias(alias):
+            return _response(400, {"error": "Invalid alias format. Use 1-50 alphanumeric characters, dashes, or underscores."})
 
         payload = {
             "user_id": user_id,
