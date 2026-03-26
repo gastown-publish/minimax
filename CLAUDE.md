@@ -144,3 +144,32 @@ This repo manages the MiniMax-M2.5 platform: inference server, website, chat UI,
 | `MINIMAX_MODEL_DIR` | `/opt/models/MiniMax-M2.5-HF` | Model files path |
 | `MINIMAX_API_KEY` | none | API key for authenticating to the API |
 | `LITELLM_MASTER_KEY` | none | LiteLLM admin key (server only) |
+
+## Project Rules and Invariants
+
+### Security
+- NEVER commit secrets, API keys, or passwords to git
+- ALWAYS use environment variables for sensitive config
+- ALWAYS validate input in Lambda handlers
+- Use non-root users in Docker containers
+
+### Code Quality
+- ALWAYS run CI checks before merging
+- NEVER bypass failing tests
+- Use type hints in Python files
+- Add `from __future__ import annotations` to all new Python files
+
+### Git Workflow
+- Create feature branches: `fix/...` or `feat/...`
+- Squash merge PRs with descriptive titles
+- Reference issues in commit messages: `(#123)`
+
+### Docker
+- Use multi-stage builds to reduce image size
+- Run containers as non-root user
+- Add HEALTHCHECK to Dockerfile
+
+### Testing
+- Add pytest tests for new features
+- Run `pytest tests/` before pushing
+- Add security scanning (Bandit) to CI
