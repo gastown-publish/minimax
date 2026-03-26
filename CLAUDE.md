@@ -2,6 +2,26 @@
 
 This repo manages the MiniMax-M2.5 platform: inference server, website, chat UI, CLI, and iOS app.
 
+## MANDATORY: CI Must Pass Before Merge
+
+**NEVER merge a PR unless ALL GitHub Actions checks are passing.** This is the #1 rule.
+
+### Before creating a PR:
+1. Run tests locally if available
+2. Push your branch and wait for CI to complete
+3. Verify CI is green with: `gh pr checks <PR-NUMBER>`
+
+### Before merging a PR:
+1. Run `gh pr checks <PR-NUMBER>` — ALL checks must show ✓
+2. If any check fails, **DO NOT MERGE**. Fix the issue first.
+3. After fixing, push again and wait for CI to re-run
+
+### After merging:
+1. Verify main branch CI passes: `gh run list --branch main --limit 1`
+2. If main CI fails after merge, **immediately** create a fix PR
+
+**Violation of this rule causes cascading failures.** Always verify CI before merging.
+
 ## Architecture
 
 ```
