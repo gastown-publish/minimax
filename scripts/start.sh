@@ -5,6 +5,7 @@ VENV="/home/nic/data/models/MiniMax-M2.5/.venv"
 MODEL="/home/nic/data/models/MiniMax-M2.5-HF"
 LOG="/tmp/vllm-minimax.log"
 PID_FILE="/tmp/vllm-minimax.pid"
+LOCK_FILE="/tmp/vllm-minimax.lock"
 PORT=8080
 
 # ── GPU Configuration ───────────────────────────────────────────────
@@ -119,7 +120,11 @@ fi
 nohup "${VLLM_CMD[@]}" > "$LOG" 2>&1 &
 
 PID=$!
-echo "$PID" > "$PID_FILE"
+# Atomic PID file write with lock to prevent race conditions
+(
+    flock -x 200
+    echo "$PID" > "$PID_FILE"
+) 200>"$LOCK_FILE"
 echo "Server PID: $PID"
 
 echo "Waiting for model to load (~10-20 minutes for FP8)..."

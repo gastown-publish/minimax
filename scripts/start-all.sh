@@ -7,6 +7,7 @@ VENV="/home/nic/data/models/MiniMax-M2.5/.venv"
 LITELLM_CONFIG="$REPO_DIR/litellm-config.yaml"
 LITELLM_LOG="/tmp/litellm-minimax.log"
 LITELLM_PID_FILE="/tmp/litellm-minimax.pid"
+LOCK_FILE="/tmp/litellm-minimax.lock"
 
 echo "=== Starting MiniMax-M2.5 Full Stack ==="
 echo ""
@@ -40,7 +41,7 @@ else
         > "$LITELLM_LOG" 2>&1 &
 
     LITELLM_PID=$!
-    echo "$LITELLM_PID" > "$LITELLM_PID_FILE"
+    (flock -x 200; echo "$LITELLM_PID" > "$LITELLM_PID_FILE") 200>"$LOCK_FILE"
     echo "LiteLLM PID: $LITELLM_PID"
     echo "LiteLLM log: $LITELLM_LOG"
 
