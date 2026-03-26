@@ -54,7 +54,10 @@ def list_models(api_key: str | None = None, timeout: float = 5) -> list[dict]:
     try:
         r = httpx.get(f"{base}/v1/models", headers=_headers(api_key), timeout=timeout)
         r.raise_for_status()
-        return r.json().get("data", [])
+        data = r.json()
+        if not isinstance(data, dict):
+            return []
+        return data.get("data", [])
     except Exception:
         return []
 
