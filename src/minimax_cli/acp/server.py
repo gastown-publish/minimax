@@ -9,6 +9,7 @@ Provides a full coding agent with tool execution:
 """
 
 from __future__ import annotations
+__all__ = ["main"]
 
 import asyncio
 import json
