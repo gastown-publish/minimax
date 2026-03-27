@@ -8,6 +8,7 @@ import subprocess
 import click
 
 
+__all__ = ["_require_server_env","cmd","serve","cmd","stop","cmd","logs"]
 def _require_server_env():
     """Check that we're on the server with the repo available."""
     from ..constants import SCRIPTS_DIR

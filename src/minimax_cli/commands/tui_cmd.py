@@ -11,6 +11,7 @@ import click
 from ..config import get_litellm_master_key
 
 
+__all__ = ["_find_repo_dir","cmd","tui"]
 def _find_repo_dir() -> Path | None:
     """Find the repo root by looking for tui/ directory up from source file."""
     # When installed from repo (pip install -e .), walk up parents

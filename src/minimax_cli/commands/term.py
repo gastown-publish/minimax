@@ -12,6 +12,7 @@ from ..config import get_api_key
 console = Console()
 
 
+__all__ = ["cmd","term"]
 @click.command()
 @click.argument("extra_args", nargs=-1, type=click.UNPROCESSED)
 def term(extra_args: tuple):

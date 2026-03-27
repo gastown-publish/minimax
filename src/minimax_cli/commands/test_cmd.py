@@ -13,6 +13,7 @@ from ..api import _base_url, check_health, list_models
 console = Console()
 
 
+__all__ = ["cmd","test"]
 @click.command("test")
 def test():
     """Run inference health checks against the API."""

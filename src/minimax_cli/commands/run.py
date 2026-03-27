@@ -12,6 +12,7 @@ from ..api import _base_url, _headers, check_health
 console = Console()
 
 
+__all__ = ["cmd","run"]
 @click.command()
 @click.option("--model", default=DEFAULT_MODEL, help="Model ID to use.")
 @click.option("--system", "system_msg", default=None, help="System prompt.")

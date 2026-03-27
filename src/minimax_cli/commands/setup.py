@@ -15,6 +15,7 @@ from ..constants import PUBLIC_API_BASE, DEFAULT_MODEL
 console = Console()
 
 
+__all__ = ["_require_key","setup","claude","codex","openclaw","opencode","aider","continue_ide","cline","_append_to_profile"]
 def _require_key() -> str:
     key = get_api_key()
     if not key:

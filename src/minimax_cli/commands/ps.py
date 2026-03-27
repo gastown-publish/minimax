@@ -16,6 +16,7 @@ from ..api import check_health, list_models as api_list_models
 console = Console()
 
 
+__all__ = ["_proc_info","_gpu_summary","_is_server_env","cmd","ps","cmd","list_models"]
 def _proc_info(pid_file) -> dict | None:
     """Get process info from a PID file."""
     if not pid_file.exists():

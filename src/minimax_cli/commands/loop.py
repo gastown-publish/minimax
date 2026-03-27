@@ -18,6 +18,7 @@ console = Console()
 STATE_FILE = ".mm-loop-state.json"
 
 
+__all__ = ["_git_context","_load_state","_save_state","cmd","loop","_cleanup_state"]
 def _git_context() -> str:
     """Gather git diff and file listing for context."""
     parts = []
