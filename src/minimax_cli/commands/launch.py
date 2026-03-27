@@ -21,6 +21,7 @@ console = Console()
 MM_CLAUDE_CONFIG = os.path.expanduser("~/.mm-claude")
 
 
+__all__ = ["_check_api", "_require_key", "_has_docker", "_docker_run", "_find_binary", "_require_binary", "_ensure_senior_swe", "_write_codex_config", "_write_opencode_config", "_write_aider_config", "_write_kimi_config", "_ensure_claude_skills", "launch", "claude", "aider", "codex", "opencode", "openclaw", "nori", "toad", "kimi", "_write_gasclaw_compose", "gasclaw"]
 def _check_api(key: str) -> bool:
     """Quick API connectivity check — GET /v1/models with the key."""
     import urllib.request

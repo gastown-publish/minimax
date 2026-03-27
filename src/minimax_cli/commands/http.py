@@ -18,6 +18,7 @@ from ..constants import DEFAULT_MODEL
 _START_TIME = time.time()
 
 
+__all__ = ["_get_health_data", "cmd", "http"]
 def _get_health_data() -> dict[str, Any]:
     """Build health check response data."""
     # Check backend API health

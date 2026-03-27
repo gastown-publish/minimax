@@ -6,6 +6,7 @@ import asyncio
 import click
 
 
+__all__ = ["cmd", "acp"]
 @click.command("acp")
 def acp():
     """Start ACP server (for Toad and IDE integration)."""

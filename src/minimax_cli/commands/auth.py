@@ -11,6 +11,7 @@ from ..api import verify_key
 console = Console()
 
 
+__all__ = ["auth", "login", "status", "logout"]
 @click.group(context_settings={"help_option_names": ["-h", "--help"]})
 def auth():
     """Manage API key authentication."""

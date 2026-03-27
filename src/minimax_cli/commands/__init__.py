@@ -1,4 +1,5 @@
 from __future__ import annotations
+__all__ = ["console", "ensure_api_key", "warn_no_api_key", "API_KEY_ENV", "DEFAULT_MODEL"]
 
 """Shared utilities for minimax CLI commands.
 
