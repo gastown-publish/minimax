@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 import os
+import logging
+logger = logging.getLogger(__name__)
 import time
-import httpx
 
 # Rate limiting for email operations (max 1 per 60 seconds)
 _EMAIL_RATE_FILE = "/tmp/minimax_email_rate_limit"
@@ -67,7 +68,7 @@ def check_health(api_key: str | None = None, timeout: float = 10) -> bool:
             r = httpx.get(endpoint, headers=_headers(api_key), timeout=timeout)
             if r.status_code == 200:
                 return True
-        except Exception:
+        except Exception as e: logger.debug(f"Health check failed: {e}")
             continue
     return False
 
@@ -82,7 +83,7 @@ def list_models(api_key: str | None = None, timeout: float = 5) -> list[dict]:
         if not isinstance(data, dict):
             return []
         return data.get("data", [])
-    except Exception:
+    except Exception as e: logger.warning(f"Failed to list models: {e}")
         return []
 
 
@@ -96,7 +97,7 @@ def verify_key(api_key: str, timeout: float = 5) -> bool:
             timeout=timeout,
         )
         return r.status_code == 200
-    except Exception:
+    except Exception as e: logger.debug(f"verify_key fallback failed: {e}")
         return False
 
 
