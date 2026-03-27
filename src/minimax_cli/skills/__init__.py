@@ -10,6 +10,11 @@ from pathlib import Path
 SKILLS_DIR = Path(__file__).parent
 
 
+def get_skill_path(name: str) -> Path:
+    """Return the full path to a skill file."""
+    return SKILLS_DIR / f"{name}.md"
+
+
 def list_skills() -> list[dict]:
     """Return metadata for all bundled skills."""
     skills = []
@@ -31,7 +36,7 @@ def list_skills() -> list[dict]:
 
 def load_skill(name: str) -> str | None:
     """Load a skill's prompt template by name."""
-    path = SKILLS_DIR / f"{name}.md"
+    path = get_skill_path(name)
     if path.exists():
         return path.read_text()
     return None
