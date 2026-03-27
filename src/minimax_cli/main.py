@@ -1,4 +1,6 @@
 from __future__ import annotations
+__all__ = ["cli", "completion", "completion_bash", "completion_zsh", "completion_fish", "completion_install", "upgrade"]
+
 """CLI entry point — registers all subcommands."""
 
 import click
