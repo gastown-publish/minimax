@@ -1,3 +1,4 @@
+from __future__ import annotations
 """mm — MiniMax-M2.5 AI terminal agent."""
 
 from importlib.metadata import version, PackageNotFoundError
