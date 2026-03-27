@@ -1,3 +1,4 @@
+from __future__ import annotations
 """Shared constants for paths, URLs, and model IDs."""
 
 import os

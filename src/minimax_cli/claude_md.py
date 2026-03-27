@@ -1,3 +1,4 @@
+from __future__ import annotations
 """Default CLAUDE.md content for mm-launched Claude Code sessions.
 
 Re-exports from system_prompt.py for backwards compatibility.

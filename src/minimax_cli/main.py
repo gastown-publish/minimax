@@ -1,3 +1,4 @@
+from __future__ import annotations
 """CLI entry point — registers all subcommands."""
 
 import click

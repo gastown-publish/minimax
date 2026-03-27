@@ -1,3 +1,4 @@
+from __future__ import annotations
 """System prompt content injected into all AI IDE tools launched via mm."""
 
 # Generic system prompt for all tools (aider, codex, opencode, kimi, openclaw)
