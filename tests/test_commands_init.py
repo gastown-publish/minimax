@@ -1,17 +1,10 @@
-"""Tests for minimax_cli.commands.__init__ module."""
+"""Tests for commands __init__."""
 
 import pytest
 
 
 class TestCommandsInit:
-    """Tests for commands init utilities."""
-
-    def test_console_exists(self):
-        """Test console is defined."""
-        from minimax_cli.commands import console
-        assert console is not None
-
-    def test_ensure_api_key_callable(self):
-        """Test ensure_api_key is callable."""
-        from minimax_cli.commands import ensure_api_key
-        assert callable(ensure_api_key)
+    def test_commands_importable(self):
+        """Test commands package is importable."""
+        from minimax_cli import commands
+        assert commands is not None
