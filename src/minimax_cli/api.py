@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import httpx
 import logging
 logger = logging.getLogger(__name__)
 import time
@@ -68,8 +69,7 @@ def check_health(api_key: str | None = None, timeout: float = 10) -> bool:
             r = httpx.get(endpoint, headers=_headers(api_key), timeout=timeout)
             if r.status_code == 200:
                 return True
-        except Exception as e: logger.debug(f"Health check failed: {e}")
-            continue
+        except Exception as e: logger.debug(f"Health check failed: {e}"); continue
     return False
 
 
@@ -83,8 +83,7 @@ def list_models(api_key: str | None = None, timeout: float = 5) -> list[dict]:
         if not isinstance(data, dict):
             return []
         return data.get("data", [])
-    except Exception as e: logger.warning(f"Failed to list models: {e}")
-        return []
+    except Exception as e: logger.warning(f"Failed to list models: {e}"); return []
 
 
 def verify_key(api_key: str, timeout: float = 5) -> bool:
@@ -97,8 +96,7 @@ def verify_key(api_key: str, timeout: float = 5) -> bool:
             timeout=timeout,
         )
         return r.status_code == 200
-    except Exception as e: logger.debug(f"verify_key fallback failed: {e}")
-        return False
+    except Exception as e: logger.debug(f"verify_key fallback failed: {e}"); return False
 
 
 def _email_body(api_key: str, alias: str = "") -> tuple[str, str]:
