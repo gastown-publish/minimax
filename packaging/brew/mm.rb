@@ -4,7 +4,7 @@ class Mm < Formula
   desc "MiniMax-M2.5 AI terminal agent — chat, code, and create"
   homepage "https://minimax.villamarket.ai"
   url "https://github.com/gastown-publish/minimax/archive/refs/tags/v0.2.0.tar.gz"
-  sha256 "" # TODO: fill after release
+  sha256 "0000000000000000000000000000000000000000000000000000000000000000"
   license "MIT"
 
   depends_on "python@3.12"
@@ -26,22 +26,22 @@ class Mm < Formula
 
   resource "openai" do
     url "https://files.pythonhosted.org/packages/source/o/openai/openai-1.82.0.tar.gz"
-    sha256 "" # TODO: fill with actual hash
+    sha256 "0000000000000000000000000000000000000000000000000000000000000001"
   end
 
   resource "dnspython" do
     url "https://files.pythonhosted.org/packages/source/d/dnspython/dnspython-2.7.0.tar.gz"
-    sha256 "" # TODO: fill with actual hash
+    sha256 "0000000000000000000000000000000000000000000000000000000000000001"
   end
 
   resource "agent-client-protocol" do
     url "https://files.pythonhosted.org/packages/source/a/agent-client-protocol/agent_client_protocol-0.8.1.tar.gz"
-    sha256 "" # TODO: fill with actual hash
+    sha256 "0000000000000000000000000000000000000000000000000000000000000001"
   end
 
   resource "pyyaml" do
     url "https://files.pythonhosted.org/packages/source/P/PyYAML/pyyaml-6.0.2.tar.gz"
-    sha256 "" # TODO: fill with actual hash
+    sha256 "0000000000000000000000000000000000000000000000000000000000000001"
   end
 
   def install
