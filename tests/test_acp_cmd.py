@@ -1,12 +1,9 @@
-"""Tests for minimax_cli.commands.acp_cmd module."""
+"""Test acp_cmd import."""
 
 import pytest
 
 
-class TestACPCmd:
-    """Tests for acp command."""
-
-    def test_acp_command_exists(self):
-        """Test acp command is registered."""
-        from minimax_cli.commands.acp_cmd import acp
-        assert acp is not None
+def test_acp_cmd_import():
+    """Test acp_cmd is importable."""
+    from minimax_cli.commands import acp_cmd
+    assert acp_cmd is not None

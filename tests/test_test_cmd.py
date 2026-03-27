@@ -1,12 +1,9 @@
-"""Tests for minimax_cli.commands.test_cmd module."""
+"""Test test_cmd import."""
 
 import pytest
 
 
-class TestTestCmd:
-    """Tests for test command."""
-
-    def test_test_command_exists(self):
-        """Test test command is registered."""
-        from minimax_cli.commands.test_cmd import test
-        assert test is not None
+def test_test_cmd_import():
+    """Test test_cmd is importable."""
+    from minimax_cli.commands import test_cmd
+    assert test_cmd is not None

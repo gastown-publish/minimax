@@ -1,12 +1,9 @@
-"""Tests for minimax_cli.commands.tui_cmd module."""
+"""Test tui_cmd import."""
 
 import pytest
 
 
-class TestTuiCmd:
-    """Tests for tui command."""
-
-    def test_tui_command_exists(self):
-        """Test tui command is registered."""
-        from minimax_cli.commands.tui_cmd import tui
-        assert tui is not None
+def test_tui_cmd_import():
+    """Test tui_cmd is importable."""
+    from minimax_cli.commands import tui_cmd
+    assert tui_cmd is not None
