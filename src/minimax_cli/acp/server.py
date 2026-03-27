@@ -15,7 +15,6 @@ import json
 import os
 # B404: subprocess needed for command execution
 import subprocess  # nosec: B404
-import subprocess
 import uuid
 from pathlib import Path
 from typing import Any
