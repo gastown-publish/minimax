@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+__all__ = ["check_health", "list_models", "verify_key", "send_key_email"]
 import os
 import httpx
 import logging
