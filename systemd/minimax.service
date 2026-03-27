@@ -4,8 +4,9 @@ After=network.target docker.service
 Requires=docker.service
 
 [Service]
-Type=oneshot
-RemainAfterExit=yes
+Type=simple
+Restart=always
+RestartSec=10
 ExecStartPre=/usr/bin/docker pull ghcr.io/gastown-publish/mm-api:latest
 ExecStart=/usr/bin/docker run --rm -p 8080:8080 -p 4000:4000 \
     --env MINIMAX_API_KEY=${MINIMAX_API_KEY} \
