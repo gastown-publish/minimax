@@ -97,4 +97,4 @@ jobs:
         run: |
           pip install bandit
           bandit -r src/ -f json -o bandit-report.json
-          bandit -r src/ -f screen -ll HIGH
+          bandit -r src/ -f screen --severity-level high

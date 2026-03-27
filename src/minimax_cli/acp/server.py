@@ -13,6 +13,8 @@ from __future__ import annotations
 import asyncio
 import json
 import os
+# B404: subprocess needed for command execution
+import subprocess  # nosec: B404
 import subprocess
 import uuid
 from pathlib import Path
@@ -219,7 +221,7 @@ def _execute_tool(name: str, args: dict, cwd: str) -> str:
             command = args.get("command", "")
             result = subprocess.run(
                 command,
-                shell=True,
+                shell=True,  # nosec: B602 (intentional for bash execution)
                 capture_output=True,
                 text=True,
                 timeout=120,
