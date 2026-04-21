@@ -59,3 +59,7 @@ dist/
 
 # Beads / Dolt files (added by bd init)
 .beads-credential-key
+
+# Beads state — local only
+.beads/
+.beads
