@@ -7,7 +7,7 @@
 
 const VLLM_URL = "http://localhost:8080/v1";
 const LITELLM_URL = "http://localhost:4000/v1";
-const LITELLM_KEY = "sk-1564f41cd82a7303e6e3eb15cedc15eb76d1a3f556d8b890";
+const LITELLM_KEY = "YOUR_LITELLM_MASTER_KEY";
 
 async function bench(label, fn) {
   process.stdout.write(`  ${label}... `);
