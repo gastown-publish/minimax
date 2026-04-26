@@ -120,7 +120,7 @@ Add the following configuration to your `openclaw.json` file in the `models.prov
         "name": "MiniMax-M2.5 (LiteLLM)",
         "api": "openai-completions",
         "baseUrl": "http://localhost:4000/v1",
-        "apiKey": "sk-1564f41cd82a7303e6e3eb15cedc15eb76d1a3f556d8b890",
+        "apiKey": "YOUR_LITELLM_MASTER_KEY",
         "models": [
           {
             "id": "minimax-m2.5",
@@ -196,7 +196,7 @@ For better security, store the API key in an environment variable:
 1. Add to your shell profile (`~/.bashrc` or `~/.zshrc`):
 
 ```bash
-export MINIMAX_API_KEY="sk-1564f41cd82a7303e6e3eb15cedc15eb76d1a3f556d8b890"
+export MINIMAX_API_KEY="YOUR_LITELLM_MASTER_KEY"
 ```
 
 2. In OpenClaw config, reference the environment variable:
