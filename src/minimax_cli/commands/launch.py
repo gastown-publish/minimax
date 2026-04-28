@@ -32,7 +32,7 @@ def _check_api(key: str) -> bool:
             f"{PUBLIC_API_V1}/models",
             headers={"Authorization": f"Bearer {key}"},
         )
-        resp = urllib.request.urlopen(req, timeout=5)
+        resp = urllib.request.urlopen(req, timeout=5)  # nosec B310
         if resp.status == 200:
             console.print("  [green]API: connected[/]")
             return True

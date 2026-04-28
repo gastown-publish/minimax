@@ -117,7 +117,7 @@ def upgrade():
     try:
         url = f"https://api.github.com/repos/{repo}/releases/latest"
         req = urllib.request.Request(url, headers={"Accept": "application/vnd.github+json"})
-        data = json.loads(urllib.request.urlopen(req, timeout=15).read())
+        data = json.loads(urllib.request.urlopen(req, timeout=15).read())  # nosec B310
         tag = data.get("tag_name", "")
         latest = tag.lstrip("v")
     except Exception as e:
