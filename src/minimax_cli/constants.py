@@ -4,6 +4,7 @@ __all__ = ["REPO_DIR", "SCRIPTS_DIR", "CONFIG_DIR", "CONFIG_FILE", "KEYS_FILE", 
 """Shared constants for paths, URLs, and model IDs."""
 
 import os
+import tempfile
 from pathlib import Path
 
 # ── Paths ──────────────────────────────────────────────────────────────
@@ -26,10 +27,14 @@ KEYS_FILE = CONFIG_DIR / "keys.json"
 LITELLM_CONFIG = REPO_DIR / "litellm-config.yaml"
 
 # ── PID files & logs ──────────────────────────────────────────────────
-VLLM_PID = Path("/tmp/vllm-minimax.pid")
-LITELLM_PID = Path("/tmp/litellm-minimax.pid")
-VLLM_LOG = Path("/tmp/vllm-minimax.log")
-LITELLM_LOG = Path("/tmp/litellm-minimax.log")
+# Use tempfile.gettempdir() for OS-appropriate secure temp location.
+# This avoids TOCTOU / symlink attack surface of hardcoded /tmp/ paths.
+_RUN_DIR = Path(tempfile.gettempdir()) / "minimax"
+_RUN_DIR.mkdir(mode=0o755, exist_ok=True)
+VLLM_PID = _RUN_DIR / "vllm-minimax.pid"
+LITELLM_PID = _RUN_DIR / "litellm-minimax.pid"
+VLLM_LOG = _RUN_DIR / "vllm-minimax.log"
+LITELLM_LOG = _RUN_DIR / "litellm-minimax.log"
 
 # ── URLs ──────────────────────────────────────────────────────────────
 VLLM_BASE = "http://localhost:8080"

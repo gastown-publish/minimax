@@ -4,13 +4,17 @@ from __future__ import annotations
 
 __all__ = ["check_health", "list_models", "verify_key", "send_key_email"]
 import os
+import tempfile
 import httpx
 import logging
 logger = logging.getLogger(__name__)
 import time
 
 # Rate limiting for email operations (max 1 per 60 seconds)
-_EMAIL_RATE_FILE = "/tmp/minimax_email_rate_limit"
+# Use a private subdirectory under the OS temp dir to avoid symlink attacks.
+_RATE_LIMIT_DIR = Path(tempfile.gettempdir()) / "minimax"
+_RATE_LIMIT_DIR.mkdir(mode=0o755, exist_ok=True)
+_EMAIL_RATE_FILE = _RATE_LIMIT_DIR / "email_rate_limit"
 
 
 def _check_email_rate_limit() -> bool:
@@ -31,6 +35,7 @@ def _check_email_rate_limit() -> bool:
         pass
     return True
 
+from pathlib import Path
 from .constants import LITELLM_BASE, PUBLIC_API_BASE, VLLM_BASE
 
 

@@ -87,7 +87,7 @@ class HealthHandler(BaseHTTPRequestHandler):
 
 
 @click.command()
-@click.option("--host", default="0.0.0.0", help="Host to bind to.")
+@click.option("--host", default="127.0.0.1", help="Host to bind to.")
 @click.option("--port", default=8080, type=int, help="Port to listen on.")
 def http(host: str, port: int):
     """Start HTTP server with /health endpoint for monitoring.
